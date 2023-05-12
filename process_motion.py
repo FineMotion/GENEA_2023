@@ -1,4 +1,5 @@
 from pymo.parsers import BVHParser
+from pymo.writers import BVHWriter
 from sklearn.pipeline import Pipeline
 from pathlib import Path
 import logging
@@ -54,7 +55,33 @@ def bvh2features(data_path: Path, dst_dir: Path, pipeline_dir: Path):
 
 
 def features2bvh(data_path: Path, dst_dir: Path, pipeline_dir: Path):
-    pass
+    logging.info('Loading pipeline...')
+    pipeline_path = Path(pipeline_dir) / 'data_pip.sav'
+    pipeline = jl.load(str(pipeline_path))  # type: Pipeline
+
+    data_path = Path(data_path)
+    recordings = list(data_path.glob('*.npy')) if data_path.is_dir() else [data_path]
+
+    data = []
+    for recording in recordings:
+        features = np.load(str(recording))
+        logging.info(f"{recording} motion feature shape: {features.shape}")
+        data.append(features)
+
+    logging.info("Transforming data...")
+    bvh_data = pipeline.inverse_transform(data)
+
+    dst_dir = Path(dst_dir)
+    if not dst_dir.exists():
+        dst_dir.mkdir()
+
+    bvh_writer = BVHWriter()
+    logging.info("Saving bvh...")
+    for i, recording in enumerate(recordings):
+        dst_path = dst_dir / recording.name.replace('.npy', '.bvh')
+        logging.info(dst_path)
+        with open(str(dst_path), 'w') as f:
+            bvh_writer.write(bvh_data[i], f)
 
 
 if __name__ == '__main__':
@@ -75,8 +102,8 @@ if __name__ == '__main__':
         fit_pipeline(Path(args.src), Path(args.pipeline_dir), data_pipe)
     elif args.mode == 'bvh2npy':
         bvh2features(Path(args.src), Path(args.dst), Path(args.pipeline_dir))
-    elif args.mode == 'bvh2npy':
-        bvh2features(Path(args.src), Path(args.dst), Path(args.pipeline_dir))
+    elif args.mode == 'npy2bvh':
+        features2bvh(Path(args.src), Path(args.dst), Path(args.pipeline_dir))
     else:
         logging.warning(f'Unsupported mode: {args.mode}')
 
