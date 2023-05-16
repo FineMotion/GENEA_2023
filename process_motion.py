@@ -7,7 +7,7 @@ import joblib as jl
 from argparse import ArgumentParser
 from tqdm import tqdm
 import numpy as np
-from src.utils.pipelines import position_pipeline
+from src.utils.pipelines import position_pipeline, ortho6d_pipeline
 
 
 def fit_pipeline(data_path: Path, pipeline_dir: Path, data_pipe: Pipeline):
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     arg_parser = ArgumentParser()
     arg_parser.add_argument('--mode', choices=['bvh2npy', 'npy2bvh', 'pipeline'], help='Processing mode')
     arg_parser.add_argument('--pipeline_dir', default='./pipe', help='Path to save pipeline')
-    arg_parser.add_argument('--pipeline', choices=['position'], help='Pipeline type', default='position')
+    arg_parser.add_argument('--pipeline', choices=['position', 'ortho6d'], help='Pipeline type', default='position')
     arg_parser.add_argument('--src', help='Path to input data to process')
     arg_parser.add_argument('--dst', help='Path to store processed data')
     args = arg_parser.parse_args()
@@ -98,6 +98,8 @@ if __name__ == '__main__':
         data_pipe = None
         if args.pipeline == 'position':
             data_pipe = position_pipeline()
+        elif args.pipeline == 'ortho6d':
+            data_pipe = ortho6d_pipeline()
         assert data_pipe
         fit_pipeline(Path(args.src), Path(args.pipeline_dir), data_pipe)
     elif args.mode == 'bvh2npy':
