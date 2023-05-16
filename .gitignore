@@ -1,3 +1,6 @@
 .ipynb_checkpoints
 data
 pipe
+**/__pycache__
+.idea
+.DS_Store
