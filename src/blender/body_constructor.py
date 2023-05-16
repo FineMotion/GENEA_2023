@@ -4,14 +4,10 @@ import json
 import sys
 from pathlib import Path
 
-from bpy_types import Bone
 
-from pymo.data import MocapData
-
-print(sys.executable)
 d = os.path.dirname(bpy.data.filepath)
-
-packeges_path = '/Users/vl.korzun/.local/lib/python3.10/site-packages'
+# path to site-packages with pandas
+packeges_path = os.environ.get("BLENDER_PACKAGES")
 
 FILTERING_JOINTS = ["body_world", "b_root", "b_spine0", "b_spine1", 
                 "b_spine2", "b_spine3", "b_neck0", "b_head", "b_r_shoulder",
@@ -26,20 +22,26 @@ FILTERING_JOINTS = ["body_world", "b_root", "b_spine0", "b_spine1",
 if d not in sys.path:
     sys.path.append(d)  
     
-if packeges_path not in sys.path:
+if packeges_path is not None and packeges_path not in sys.path:
     sys.path.append(packeges_path)
-    
+  
 from pymo.parsers import BVHParser
+from pymo.data import MocapData
 import numpy as np
 
 def clean_scene():
     bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.data.objects.remove(bpy.data.objects["Armature"], do_unlink=True)
+    for obj in bpy.data.objects:
+        if obj.name == "Armature":
+            print("Deleting Armature...")
+            bpy.data.objects.remove(bpy.data.objects["Armature"], do_unlink=True)
     
     
 def generate_skeleton(data: MocapData):
+    print("Generatig Skeleton...")
     bpy.ops.object.armature_add(enter_editmode=False, align="WORLD", location=(0,0,0), scale=(1,1,1))
     armature = bpy.data.objects["Armature"]
+    armature.name = "metarig"
     armature.select_set(True)
     
     bpy.ops.object.mode_set(mode="EDIT")
@@ -67,14 +69,19 @@ def generate_skeleton(data: MocapData):
         bone.head = offsets[joint]
         children = data.skeleton[joint]['children']
         parent = data.skeleton[joint]['parent']
-        bone.tail = np.mean([offsets[child] for child in children], axis=0)
+        tail = np.mean([offsets[child] for child in children], axis=0)
+        bone.tail = tail
+        if bone.length < 1e-6:
+            bone.tail[1] += 0.1
+            
         if parent is not None:
             bone.parent = bones[parent]
         bone.name = joint
         bones[joint] = bone
+    print(bones)
 
 
-def retarget(data, skeleton, joints_order):
+def retarget(data, skeleton, joints_order, do_retarget=True):
     # Step 1: Build temporary Armature
     bpy.ops.object.armature_add(enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
     armature = bpy.data.objects["Armature"]
@@ -94,12 +101,27 @@ def retarget(data, skeleton, joints_order):
         bone.head = np.array(data[joint])
         children = skeleton[joint]['children']
         parent = skeleton[joint]['parent']
-        bone.tail = np.mean([data[child] for child in children], axis=0)
+        tail = np.mean([data[child] for child in children], axis=0)
+        bone.tail = tail
+#        if 'twist'
+#        if tail == bone.head:
+#            tail[1] += 0.1
+#        if bone.length < 1e-12:
+#            # it is foot twist
+#            # move a little in parent direction
+#            parent_head = bones[parent].head
+#            direction = bone.head - parent_head
+#            direction = direction /  np.linalg.norm(direction)
+#            bone.tail += direction * 0.1 
+        
         if parent is not None:
             bone.parent = bones[parent]
         bone.name = joint
         bones[joint] = bone
-
+    
+    if not do_retarget:
+        return
+    
     # Stage 3: retarget to metarig
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.data.objects["metarig"].select_set(True)
@@ -107,31 +129,48 @@ def retarget(data, skeleton, joints_order):
     bpy.ops.object.mode_set(mode='POSE')
     metarig = bpy.data.objects["metarig"]
 
-    for bone_name in joints_order:
-        metarig_bone = metarig.pose.bones[bone_name]
+    for bn in metarig.pose.bones:
+        bone_name = bn.name
+#        if 'Nub' in joint:
+#            continue
+        bone = metarig.pose.bones[bone_name]
 
-        constraint = metarig_bone.constraints.new('COPY_ROTATION')
+        constraint = bone.constraints.new('COPY_ROTATION')
         constraint.target = armature
         constraint.subtarget = bone_name
         metarig.data.bones[bone_name].select = True
         bpy.ops.pose.visual_transform_apply()
 
-        copy_constraints = [c for c in metarig_bone.constraints if c.type == 'COPY_ROTATION']
+        copy_constraints = [c for c in bone.constraints if c.type == 'COPY_ROTATION']
         for c in copy_constraints:
-            metarig_bone.constraints.remove(c)
+            bone.constraints.remove(c)
 
 
 data_folder = Path(d) / 'data'
-sample_path = data_folder / 'val_2023_v0_000_main-agent.bvh'
-pose_path = data_folder / 'json_data.json'
+sample_path = data_folder / 'val_2023_v0_000_main-agent.bvh' # input bvh-file
+pose_folder = data_folder / 'val_000_frames' # folder with extracted positions by frames via Python script
 bvh_parser = BVHParser()
 data = bvh_parser.parse(str(sample_path))
 #print(data.skeleton)
-clean_scene()
-# generate_skeleton(data)
-with open(str(pose_path)) as json_file:
-    pose = json.load(json_file)
 
-bpy.data.scenes['Scene'].frame_set(0)
-retarget(pose, skeleton=data.skeleton, joints_order=list(data.traverse()))
-bpy.ops.anim.keyframe_insert_menu(type='Rotation')
+# GENERATING REST POSE
+generate_skeleton(data)
+
+# BUILD POSES AND TRANSFER ROTATIONS  
+for i in range(10): # set number of frames to transfer
+    bpy.data.scenes['Scene'].frame_set(i)
+    clean_scene()
+    
+    pose_path = pose_folder / f'frame_{i:04d}.json'
+    with open(str(pose_path)) as json_file:
+        pose = json.load(json_file)
+    
+    retarget(pose, skeleton=data.skeleton, joints_order=list(data.traverse()))
+    bpy.ops.anim.keyframe_insert_menu(type='Rotation')
+
+
+# BUILD FIRST POSE TO COMPARE
+with open(str(pose_folder / f'frame_{0:04d}.json')) as json_file:
+    pose = json.load(json_file)
+    clean_scene()
+    retarget(pose, skeleton=data.skeleton, joints_order=list(data.traverse()), do_retarget=False)
