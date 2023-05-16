@@ -1,0 +1,9 @@
+librosa==0.10.0
+numpy==1.24.3
+torch==2.0.0
+torchvision==0.15.1
+torchaudio==2.0.1
+transformers==4.28.1
+pandas == 2.0.1
+transforms3d==0.4.1
+pytorch_lightning==2.0.2
