@@ -1,3 +1,10 @@
 .ipynb_checkpoints
+.idea
+*__pycache__/
+venv/
+*.DS_Store
+
 data
+split_data
+clip_data
 pipe

@@ -3,6 +3,8 @@ from pymo.preprocessing import MocapParameterizer, ConstantsRemover, Numpyfier, 
 from sklearn.pipeline import Pipeline
 import numpy as np
 
+FPS = 30
+
 joints = ['body_world', 'root', 'spine', 'shoulder',
           'arm', 'wrist', 'forearm', 'head', 'neck0',
           'spine3', 'spine2', 'spine1', 'spine0']
@@ -24,11 +26,10 @@ def data_pipline(parsed_data):
     ])
 
     processed_samples = data_pipe.fit_transform([parsed_data])
-    print(processed_samples.shape)
     return processed_samples[0]
 
 
-def split_bvh_into_blocks(processed_data, beats, frame_time):
+def split_bvh_into_blocks(processed_data, beats):
     blocks = []
     #frame_beats = np.array(beats / frame_time).astype(int)
     frame_beats = beats
