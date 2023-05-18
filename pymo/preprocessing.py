@@ -131,7 +131,7 @@ class MocapParameterizer(BaseEstimator, TransformerMixin):
                                      f[1]['%s_%srotation' % (joint, rot_order[2])]] for f in rc.iterrows()]
 
                 if pc.shape[1] < 3:
-                    pos_values = [[0, 0, 0] for f in pc.iterrows()]
+                    pos_values = np.asarray(track.skeleton[joint]['offsets'])
                 else:
                     pos_values = [[f[1]['%s_Xposition' % joint],
                                    f[1]['%s_Yposition' % joint],
@@ -152,7 +152,7 @@ class MocapParameterizer(BaseEstimator, TransformerMixin):
                     tree_data[joint][0] = rotmats * tree_data[parent][0]
 
                     # add the position channel to the offset and store it in k, for every frame i
-                    k = pos_values + np.asarray(track.skeleton[joint]['offsets'])
+                    k = pos_values
 
                     # multiply k to the rotmat of the parent for every frame i
                     q = tree_data[parent][0].inv().apply(k)
