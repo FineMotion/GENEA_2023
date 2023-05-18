@@ -1,8 +1,11 @@
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, List, Dict
 
 import numpy as np
 import matplotlib.pyplot as plt
 from src.utils.filtering import butter
+import io
+import imageio
 
 
 def pos_vel_butter(data: np.array, joint_idx: int = 0, xlim: Tuple[int, int] = (0, 300)):
@@ -38,3 +41,35 @@ def pos_vel_butter(data: np.array, joint_idx: int = 0, xlim: Tuple[int, int] = (
     ax3.plot(butter(vel_z), alpha=0.3)
     ax3.set_ylim([-1, 1])
     ax3.set_title('filtered')
+
+
+def skeleton_pose2d(pose: Dict[str, List[float]], edges: List[Tuple[str, str]]) -> plt.Figure:
+    points = np.zeros((len(pose), 3))
+    for i, joint in enumerate(pose):
+        points[i, :] = np.array(pose[joint])
+
+    fig = plt.figure(figsize=(6,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlim([-100, 100])
+    ax.set_ylim([0, 200])
+    ax.scatter(points[:, 0], points[:, 1], s=0.5)
+    for edge in edges:
+        if edge[0] in pose and edge[1] in pose:
+            start = pose[edge[0]]
+            finish = pose[edge[1]]
+            ax.plot([start[0], finish[0]], [start[1], finish[1]], color='green', alpha=0.3)
+    return fig
+
+
+def skeleton_gif2d(poses: List[Dict[str, List[float]]], edges: List[Tuple[str, str]], dst: Path):
+    images = []
+    for pose in poses:
+        fig = skeleton_pose2d(pose, edges)
+        fig.canvas.draw()
+        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        w, h = fig.canvas.get_width_height()
+        img = data.reshape((int(h), int(w), -1))
+        images.append(imageio.core.util.Array(img))
+        plt.close(fig)
+    imageio.mimsave(str(dst), images, duration=1/30)
+
