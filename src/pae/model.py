@@ -45,6 +45,7 @@ class PhaseAutoEncoder(nn.Module):
         super(PhaseAutoEncoder, self).__init__()
         self.time_range = time_range
         self.embedding_channels = embedding_channels
+        self.window = window
         intermediate_channels = input_channels // channels_per_joint
 
         # ENCODER
