@@ -7,15 +7,20 @@ import os
 
 MODE = "trn"
 
-AUDIO_FOLDER = os.path.join("data", MODE, "main-agent/wav")
-BVH_FOLDER = os.path.join("data", MODE, "main-agent/bvh")
-TSV_FOLDER = os.path.join("data", MODE, "main-agent/tsv")
+audio_folder_name = "interloctr"
+bvh_folder_name = "main-agent" if audio_folder_name == "interloctr" else "interloctr"
 
-SPLIT_AUDIO_FOLDER = os.path.join("split_data", MODE, "main-agent/audio")
-SPLIT_GESTURES_FOLDER = os.path.join("split_data", MODE, "main-agent/gestures")
+AUDIO_FOLDER = os.path.join("data", MODE, audio_folder_name, "wav")
+BVH_FOLDER = os.path.join("data", MODE, bvh_folder_name, "bvh")
+TSV_FOLDER = os.path.join("data", MODE, audio_folder_name, "tsv")
 
-RESULT_AUDIO_FOLDER = os.path.join("clips_data", MODE, "main-agent/audio")
-RESULT_GESTURES_FOLDER = os.path.join("clips_data", MODE, "main-agent/gestures")
+SPLIT_AUDIO_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/audio")
+SPLIT_GESTURES_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/gestures")
+
+
+def ensure_dir_exists(dir_path):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
 
 
 def process_one_file(audio_path, gestures_path):
@@ -34,8 +39,7 @@ def process_one_file(audio_path, gestures_path):
 
 def save_data(data, file_path):
     dir = file_path[:file_path.rfind("/")]
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+    ensure_dir_exists(dir)
     np.save(str(file_path), data)
 
 
@@ -70,11 +74,6 @@ def split_one_speaker(file_path, bvh_file_path, tsv_file_path):
 
 
 def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
-    if not os.path.exists(RESULT_AUDIO_FOLDER):
-        os.makedirs(RESULT_AUDIO_FOLDER)
-    if not os.path.exists(RESULT_GESTURES_FOLDER):
-        os.makedirs(RESULT_GESTURES_FOLDER)
-
     audio_recordings = list(audio_folder.glob('*.wav')) if audio_folder.is_dir() else [audio_folder]
     bvh_recordings = list(bvh_folder.glob('*.bvh')) if bvh_folder.is_dir() else [bvh_folder]
     tsv_recordings = list(tsv_folder.glob('*.tsv')) if tsv_folder.is_dir() else [tsv_folder]
@@ -85,7 +84,9 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
 
     for audio_record in tqdm(audio_recordings):
         print(audio_record)
-        bvh_record = audio_record.replace("wav", "bvh")
+        name = audio_record[audio_record.rfind("/") + 1: audio_record.rfind("_")]
+
+        bvh_record = os.path.join(BVH_FOLDER, name + "_" + bvh_folder_name + ".bvh")
         tsv_record = audio_record.replace("wav", "tsv")
         assert bvh_record in bvh_recordings
         assert tsv_record in tsv_recordings
@@ -102,7 +103,7 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
         bvh_split_recordings = [str(b) for b in bvh_clips]
 
         for audio in audio_split_recordings:
-            gestures = audio.replace("audio", "gestures")
+            gestures = audio.replace("audio/", "gestures/")
             assert gestures in bvh_split_recordings
             audio_clips, bvh_blocks = process_one_file(audio, gestures)
             if audio_clips is None:

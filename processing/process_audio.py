@@ -13,6 +13,8 @@ def load_audio_file(file_path):
 
 def get_borders_of_silence(audio_data, silence_criterion=441):
     zero_indices = np.where(audio_data == 0)[0]
+    if len(zero_indices) == 0:
+        return []
     start = zero_indices[0]
     end = zero_indices[0]
     borders = []
