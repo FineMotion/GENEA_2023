@@ -12,11 +12,12 @@ def add_trainer_args(parent_parser: ArgumentParser):
     arg_parser = ArgumentParser(parents=[parent_parser])
     arg_parser.add_argument("--epoches")
     arg_parser.add_argument("--batch_size")
+    arg_parser.add_argument("--learning_rate", type=float, default=1e-4)
     return arg_parser
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     arg_parser = ArgumentParser()
     arg_parser.add_argument("--serialize_dir", type=str, required=True)
     arg_parser.add_argument("--force", action="store_true")
@@ -51,19 +52,23 @@ if __name__ == '__main__':
         channels=args.channels,
         phases=args.phases,
         window=args.window,
-        fps=args.fps
+        fps=args.fps,
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
+        trn_folder=args.trn_folder,
+        val_folder=args.val_folder
     )
 
-    data_module = PAEDataModule(
-        trn_folder=args.trn_folder,
-        val_folder=args.val_fodler,
-        window=args.window,
-        fps=args.fps,
-        batch_size=args.batch_size
-    )
+    # data_module = PAEDataModule(
+    #     trn_folder=args.trn_folder,
+    #     val_folder=args.val_fodler,
+    #     window=args.window,
+    #     fps=args.fps,
+    #     batch_size=args.batch_size
+    # )
 
     trainer = Trainer(logger=wandb_logger, callbacks=[checkpoint_callback])
-    trainer.fit(model=system, datamodule=data_module)
+    trainer.fit(model=system)
 
 
 

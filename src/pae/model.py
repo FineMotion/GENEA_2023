@@ -72,6 +72,7 @@ class PhaseAutoEncoder(nn.Module):
         self.denorm1 = InstanceNorm(time_range)
         self.deconv2 = nn.Conv1d(intermediate_channels, input_channels, time_range, stride=1,
                                  padding=(time_range - 1) // 2, dilation=1, groups=1, bias=True, padding_mode='zeros')
+
     def encode(self, x: torch.FloatTensor):
         y = x  # batch_size, seq_len, degrees of freedom (3*joints)
         y = y.transpose(1, 2)  # bs, df, sl
@@ -112,6 +113,7 @@ class PhaseAutoEncoder(nn.Module):
         y = self.denorm1(y)
         y = F.elu(y)
         y = self.deconv2(y) # bs, df, sl
+        y = y.transpose(1, 2)  # bs, sl, df
 
         return y, signal
 
