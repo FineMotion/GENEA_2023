@@ -18,7 +18,7 @@ class PAESystem(pl.LightningModule):
 
     @staticmethod
     def add_system_args(parent_parser: ArgumentParser):
-        arg_parser = ArgumentParser(parents=[parent_parser])
+        arg_parser = ArgumentParser(parents=[parent_parser], add_help=False)
         arg_parser.add_argument('--joints', type=int, default=26,
                                 help="Number of joints")
         arg_parser.add_argument('--channels', type=int, default=3,
@@ -29,6 +29,7 @@ class PAESystem(pl.LightningModule):
                                 help="Number of phases")
         arg_parser.add_argument("--window", type=float, default=2.0,
                                 help="Size of time window in seconds")
+        return arg_parser
 
     def __init__(self, joints: int, channels: int, phases: int, window: float, fps: int, learning_rate: float,
                  batch_size: int, trn_folder: str, val_folder: str, *args, **kwargs):
@@ -39,8 +40,8 @@ class PAESystem(pl.LightningModule):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
 
-        self.trn_dataset = AutoEncoderDataset(Path(trn_folder).glob('*.npy'), self.window, self.fps)
-        self.val_dataset = AutoEncoderDataset(Path(val_folder).glob('*.npy'), self.window, self.fps)
+        self.trn_dataset = AutoEncoderDataset(Path(trn_folder).glob('*.npy'), window, fps)
+        self.val_dataset = AutoEncoderDataset(Path(val_folder).glob('*.npy'), window, fps)
         self.optimizer = None
         self.scheduler = None
 
@@ -55,6 +56,10 @@ class PAESystem(pl.LightningModule):
         loss = self.loss_function(y, x)
 
         self.log('trn/loss', loss)
+        t_cur = self.scheduler.t_epoch + self.scheduler.batch_increments[self.scheduler.iteration]
+        for i, (lr, wd) in enumerate(self.scheduler.get_lr(t_cur)):
+            self.log(f'trn/lr_{i}', lr)
+            self.log(f'trn/wd_{i}', wd)
         return loss
 
     def validation_step(self, batch, batch_idx):

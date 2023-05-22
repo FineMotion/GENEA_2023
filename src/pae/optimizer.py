@@ -26,7 +26,7 @@ class AdamW(Optimizer):
                 if p.grad is None:
                     continue
                 grad = p.grad.data
-                if grad.is_sparce:
+                if grad.is_sparse:
                     raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
                 amsgrad = group["amsgrad"]
 
@@ -57,6 +57,6 @@ class AdamW(Optimizer):
                 bias_correction2 = 1 - beta2 ** state['step']
                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
 
-                p.data.mul_(1-group['weight_decay']).addcdiv_(exp_avg, denom, value=step_size)
+                p.data.mul_(1-group['weight_decay']).addcdiv_(exp_avg, denom, value=-step_size)
 
         return loss
