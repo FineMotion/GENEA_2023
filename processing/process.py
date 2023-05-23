@@ -7,7 +7,7 @@ import os
 
 MODE = "trn"
 
-audio_folder_name = "interloctr"
+audio_folder_name = "main-agent"
 bvh_folder_name = "main-agent" if audio_folder_name == "interloctr" else "interloctr"
 
 AUDIO_FOLDER = os.path.join("data", MODE, audio_folder_name, "wav")
@@ -17,10 +17,27 @@ TSV_FOLDER = os.path.join("data", MODE, audio_folder_name, "tsv")
 SPLIT_AUDIO_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/audio")
 SPLIT_GESTURES_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/gestures")
 
+MIN_BEATS_LEN = 9
+MAX_BEATS_LEN = 18
+
 
 def ensure_dir_exists(dir_path):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+
+
+# как в статье https://arxiv.org/pdf/2210.01448.pdf
+def correct_beats_len(beats):
+    new_beats = []
+    if len(beats) == 0:
+        return beats
+    new_beats.append(beats[0])
+    for i in range(1, len(beats)):
+        if beats[i] - new_beats[-1] >= MIN_BEATS_LEN:
+            assert beats[i] - new_beats[-1] <= MAX_BEATS_LEN
+            new_beats.append(beats[i])
+
+    return new_beats
 
 
 def process_one_file(audio_path, gestures_path):
@@ -28,6 +45,8 @@ def process_one_file(audio_path, gestures_path):
     processed_data = np.load(gestures_path)
 
     beats = extract_speech_beats(audio_data)
+    beats = correct_beats_len(beats)
+
     audio_clips = split_audio_into_clips(audio_data, beats)
     bvh_blocks = split_bvh_into_blocks(processed_data, beats)
 
@@ -91,7 +110,9 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
         assert bvh_record in bvh_recordings
         assert tsv_record in tsv_recordings
 
+        """
         split_one_speaker(audio_record, bvh_record, tsv_record)
+        """
         name = audio_record[audio_record.rfind("/") + 1:audio_record.rfind(".")]
         split_audio_folder = Path(os.path.join(SPLIT_AUDIO_FOLDER, name))
         split_bvh_folder = Path(os.path.join(SPLIT_GESTURES_FOLDER, name))
@@ -111,10 +132,11 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
 
             assert len(audio_clips) == len(bvh_blocks)
 
-            dst_path = audio.replace('split_data', 'clip_data')
-            save_data(audio_clips, dst_path)
-            dst_path = gestures.replace('split_data', 'clip_data')
-            save_data(bvh_blocks, dst_path)
+            if len(audio_clips) != 0:
+                dst_path = audio.replace('split_data', 'clip_data_min_beats')
+                save_data(audio_clips, dst_path)
+                dst_path = gestures.replace('split_data', 'clip_data_min_beats')
+                save_data(bvh_blocks, dst_path)
 
 
 if __name__ == '__main__':

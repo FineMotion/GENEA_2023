@@ -21,18 +21,24 @@ class VQVAESystem(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch
-        reconstruction = self(x)
-        loss = F.mse_loss(reconstruction, x)
+        reconstruction, qloss = self(x)
+        mse_loss = F.mse_loss(reconstruction, x)
+        loss = mse_loss + qloss
 
         self.log('train/loss', loss)
+        self.log('train/mse_loss', mse_loss)
+        self.log('train/qloss', qloss)
         return {"loss": loss}
 
     def validation_step(self, batch, batch_idx):
         x = batch
-        reconstruction = self(x)
-        loss = F.mse_loss(reconstruction, x)
+        reconstruction, qloss = self(x)
+        mse_loss = F.mse_loss(reconstruction, x)
+        loss = mse_loss + qloss
 
         self.log('val/loss', loss)
+        self.log('val/mse_loss', mse_loss)
+        self.log('val/qloss', qloss)
         return {"loss": loss}
 
     def configure_optimizers(self):
