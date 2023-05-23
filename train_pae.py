@@ -5,7 +5,7 @@ from pytorch_lightning import Trainer
 from pathlib import Path
 import shutil
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 
 def add_trainer_args(parent_parser: ArgumentParser):
@@ -15,6 +15,7 @@ def add_trainer_args(parent_parser: ArgumentParser):
     arg_parser.add_argument("--learning_rate", type=float, default=1e-4)
     arg_parser.add_argument("--accelerator", type=str, choices=["cpu", "gpu", "tpu", "ipu", "hpu", "mps", "auto"],
                             default="cpu")
+    arg_parser.add_argument("--patience", type=int, default=20)
     return arg_parser
 
 
@@ -60,6 +61,12 @@ if __name__ == '__main__':
         trn_folder=args.trn_folder,
         val_folder=args.val_folder
     )
+    patience_callback = EarlyStopping(
+        min_delta=0.0,
+        mode='min',
+        monitor='val/loss',
+        patience=args.patience
+    )
 
     # data_module = PAEDataModule(
     #     trn_folder=args.trn_folder,
@@ -69,7 +76,8 @@ if __name__ == '__main__':
     #     batch_size=args.batch_size
     # )
 
-    trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger, callbacks=[checkpoint_callback])
+    trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
+                      callbacks=[checkpoint_callback, patience_callback])
     trainer.fit(model=system)
 
 

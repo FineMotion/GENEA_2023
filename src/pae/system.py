@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional, Any
 
@@ -86,6 +87,7 @@ class PAESystem(pl.LightningModule):
         self.scheduler.epoch_step()
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
+        logging.info(f"Batch size: {self.batch_size}")
         return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,
                           collate_fn=self.trn_dataset.collate_fn)
 
