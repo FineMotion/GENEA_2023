@@ -54,9 +54,16 @@ def skeleton_pose2d(pose: Dict[str, List[float]], edges: List[Tuple[str, str]]) 
     ax.set_ylim([0, 200])
     ax.scatter(points[:, 0], points[:, 1], s=0.5)
     for edge in edges:
-        if edge[0] in pose and edge[1] in pose:
+        if edge[0] in pose:
+            finish_node = edge[1]
+            if finish_node not in pose:
+                # try find parent node
+                finish_nodes = [e[1] for e in edges if e[0] == finish_node]
+                if len(finish_nodes) == 0 or finish_nodes[0] not in pose:
+                    continue
+                finish_node = finish_nodes[0]
             start = pose[edge[0]]
-            finish = pose[edge[1]]
+            finish = pose[finish_node]
             ax.plot([start[0], finish[0]], [start[1], finish[1]], color='green', alpha=0.3)
     return fig
 
