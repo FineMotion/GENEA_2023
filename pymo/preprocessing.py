@@ -509,6 +509,64 @@ class JointSelector(BaseEstimator, TransformerMixin):
         return Q
 
 
+class ChannelSelector(BaseEstimator, TransformerMixin):
+    """
+    Allows for filtering the mocap data to include only selected channels
+    Also could leave root positions instead of rotations
+    """
+    def __init__(self, channels, filter_root: bool = False):
+        self.channels = channels
+        self.filter_root = filter_root
+        self.selected_columns = None
+        self.not_selected = None
+        self.not_selected_values = None
+
+    def fit(self, X, y=None):
+        selected_columns = []
+        for channel in self.channels:
+            reg = re.compile(f'.+_{channel}')
+            channel_columns = [o for o in X[0].values.columns if reg.match(o) is not None]
+            if not self.filter_root:
+                root_reg = re.compile(f'{X[0].root_name}_.+')
+                channel_columns = [o for o in channel_columns if root_reg.match(o) is None]
+
+            selected_columns.extend(channel_columns)
+
+        if not self.filter_root:
+            reg = re.compile(f'{X[0].root_name}_[XYZ]position')
+            root_columns = [o for o in X[0].values.columns if reg.match(o) is not None]
+            for column in root_columns:
+                if column not in selected_columns:
+                    selected_columns.append(column)
+
+        self.selected_columns = selected_columns
+        self.not_selected = X[0].values.columns.difference(selected_columns)
+        self.not_selected_values = {c: X[0].values[c].values[0] for c in self.not_selected}
+        return self
+
+    def transform(self, X, y=None):
+        print("ChannelSelector")
+        Q = []
+
+        for track in X:
+            t2 = track.clone()
+            t2.values = track.values[self.selected_columns]
+            Q.append(t2)
+
+        return Q
+
+    def inverse_transform(self, X, copy=None):
+        Q = []
+
+        for track in X:
+            t2 = track.clone()
+            for d in self.not_selected:
+                t2.values[d] = self.not_selected_values[d]
+            Q.append(t2)
+
+        return Q
+
+
 class Numpyfier(BaseEstimator, TransformerMixin):
     '''
     Just converts the values in a MocapData object into a numpy array
@@ -530,7 +588,7 @@ class Numpyfier(BaseEstimator, TransformerMixin):
 
         for track in X:
             Q.append(track.values.values)
-            # print("Numpyfier:" + str(track.values.columns))
+            print("Numpyfier:" + str(list(track.values.columns)))
 
         return np.array(Q)
 

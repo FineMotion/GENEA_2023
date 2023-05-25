@@ -1,4 +1,4 @@
-from pymo.preprocessing import MocapParameterizer, Numpyfier, RootTransformer, JointSelector, ConstantsRemover
+from pymo.preprocessing import MocapParameterizer, Numpyfier, JointSelector, ConstantsRemover, ChannelSelector
 from sklearn.pipeline import Pipeline
 
 
@@ -31,7 +31,7 @@ def ortho6d_pipeline():
                                  "b_l_wrist", "b_r_upleg", "b_r_leg",
                                  "b_r_foot", "b_l_upleg", "b_l_leg", "b_l_foot"], include_root=True)),
         ('ortho6d', MocapParameterizer('ortho6d')),
-        ('cnst', ConstantsRemover()),
+        ('clsel', ChannelSelector(["a1x", "a1y", "a1z", "a2x", "a2y", "a2z"], filter_root=False)),
         ('np', Numpyfier()),
     ])
     return data_pipe
