@@ -59,7 +59,8 @@ if __name__ == '__main__':
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
         trn_folder=args.trn_folder,
-        val_folder=args.val_folder
+        val_folder=args.val_folder,
+        add_root=args.add_root
     )
     patience_callback = EarlyStopping(
         min_delta=0.0,

@@ -13,6 +13,8 @@ from .model import PhaseAutoEncoder
 from .dataset import AutoEncoderDataset
 from .optimizer import AdamW
 from .scheduler import CyclicRWithRestarts
+from .utils import rotmat_from_ortho6d
+from .loss import GeodesicLoss
 
 
 class PAESystem(pl.LightningModule):
@@ -30,14 +32,22 @@ class PAESystem(pl.LightningModule):
                                 help="Number of phases")
         arg_parser.add_argument("--window", type=float, default=2.0,
                                 help="Size of time window in seconds")
+        arg_parser.add_argument("--add_root", action="store_true",
+                                help="Option for additional feature with different number of channels")
         return arg_parser
 
     def __init__(self, joints: int, channels: int, phases: int, window: float, fps: int, learning_rate: float,
-                 batch_size: int, trn_folder: str, val_folder: str, *args, **kwargs):
+                 batch_size: int, trn_folder: str, val_folder: str, add_root: bool = False, *args, **kwargs):
         super().__init__()
+
+        input_channels = joints*channels
+        if add_root:
+            input_channels += 3
         self.model = PhaseAutoEncoder(input_channels=joints*channels, embedding_channels=phases,
-                                      time_range=int(fps * window) + 1, channels_per_joint=channels, window=window)
-        self.loss_function = torch.nn.MSELoss()
+                                      time_range=int(fps * window) + 1, channels_per_joint=channels, window=window,
+                                      add_root=add_root)
+        self.mse = torch.nn.MSELoss()
+        self.geodesic = GeodesicLoss()
         self.learning_rate = learning_rate
         self.batch_size = batch_size
 
@@ -45,6 +55,31 @@ class PAESystem(pl.LightningModule):
         self.val_dataset = AutoEncoderDataset(Path(val_folder).glob('*.npy'), window, fps)
         self.optimizer = None
         self.scheduler = None
+
+    def custom_loss(self, y, x):
+        """
+        Custom loss with geodesic and MSE components
+        """
+        # batch_size, seq_len, channels (joints * 6 + 3)
+        x_root = x[:, :, -3:]
+        y_root = y[:, :, -3:]
+        mse = self.mse(y_root, x_root)
+
+        x_rot = x[:, :, :-3]  # bs, sl, joints * 6
+        y_rot = y[:, :, :-3]  # bs, sl, joints * 6
+
+        bs, sl, channels = x_rot.shape
+        joints = channels // 6
+
+        x_rot = x_rot.view(bs * sl * joints, 6)  # bs * sl * joints, 6
+        y_rot = y_rot.view(bs * sl * joints, 6)  # bs * sl * joints, 6
+
+        x_rotmats = rotmat_from_ortho6d(x_rot)
+        y_rotmats = rotmat_from_ortho6d(y_rot)
+
+        geodesic = self.geodesic(y_rotmats, x_rotmats)
+        loss = mse + geodesic
+        return loss, mse, geodesic
 
     def forward(self, x):
         # batch_size, seq_len, channels
@@ -54,9 +89,12 @@ class PAESystem(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x = batch
         y, latent, signal, params = self.forward(x)
-        loss = self.loss_function(y, x)
+        loss, mse, geodesic = self.custom_loss(y, x)
 
         self.log('trn/loss', loss)
+        self.log('trn/mse', mse)
+        self.log('trn/geodesic', geodesic)
+
         t_cur = self.scheduler.t_epoch + self.scheduler.batch_increments[self.scheduler.iteration]
         for i, (lr, wd) in enumerate(self.scheduler.get_lr(t_cur)):
             self.log(f'trn/lr_{i}', lr)
@@ -66,9 +104,11 @@ class PAESystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch
         y, latent, signal, params = self.forward(x)
-        loss = self.loss_function(y, x)
+        loss, mse, geodesic = self.custom_loss(y, x)
 
         self.log('val/loss', loss)
+        self.log('val/mse', mse)
+        self.log('val/geodesic', geodesic)
         return loss
 
     def configure_optimizers(self):

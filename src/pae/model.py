@@ -33,7 +33,7 @@ class PhaseAutoEncoder(nn.Module):
     """
 
     def __init__(self, input_channels: int, embedding_channels: int, time_range: int, window: float,
-                 channels_per_joint: int = 3):
+                 channels_per_joint: int = 3, add_root: bool = False):
         """
 
         :param input_channels: num_joints * degrees of freedom
@@ -41,12 +41,15 @@ class PhaseAutoEncoder(nn.Module):
         :param time_range: frames in window (window * fps) + 1
         :param window: window size in secs
         :param channels_per_joint: degrees of freedom per joint (3 or 6)
+        :param add_root: flag of additional features for root (aka velocity)
         """
         super(PhaseAutoEncoder, self).__init__()
         self.time_range = time_range
         self.embedding_channels = embedding_channels
         self.window = window
         intermediate_channels = input_channels // channels_per_joint
+        if add_root:
+            intermediate_channels += 1
 
         # ENCODER
         self.conv1 = nn.Conv1d(input_channels, intermediate_channels, time_range, stride=1,
