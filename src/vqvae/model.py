@@ -5,6 +5,8 @@ import torch
 
 # Encoder, Decoder: https://arxiv.org/abs/2210.01448
 # VectorQuantizer: https://github.com/CompVis/taming-transformers
+# VQ-VAE training improvement: https://openreview.net/pdf?id=zEqdFwAPhhO
+# EMA: https://arxiv.org/pdf/1711.00937.pdf
 
 class Encoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, embedding_dim, max_frames):
@@ -60,7 +62,14 @@ class VectorQuantizer(nn.Module):
         self.embedding = nn.Embedding(num_embeddings, embedding_dim)
         self.embedding.weight.data.uniform_(-1. / num_embeddings, 1. / num_embeddings)
 
-    def forward(self, z):
+        # количество использований каждого вектора из codebook
+        # нужно обнулять каждую эпоху!!!
+        self.n_entries = torch.zeros(self.num_embeddings, dtype=torch.int64)
+
+        self.ema_init()
+
+    def forward(self, z, training=False):
+        self.n_entries = self.n_entries.to(z.device, dtype=torch.int64)
         # z_flattened = z.detach().view(-1, z.shape[-1])
 
         distances = torch.sum(z ** 2, dim=1, keepdim=True) + \
@@ -69,8 +78,16 @@ class VectorQuantizer(nn.Module):
 
         min_encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
         min_encodings = torch.zeros(min_encoding_indices.shape[0],
-                                    self.num_embeddings).to(z)
+                                    self.num_embeddings, dtype=torch.int64).to(z.device)
         min_encodings.scatter_(1, min_encoding_indices, 1)
+
+        encodings = F.one_hot(min_encoding_indices, self.num_embeddings).float()[:, 0, :]
+
+        # Обновление self.n_entries
+        if training:
+            self.n_entries += torch.sum(min_encodings, dim=0)
+
+        min_encodings = min_encodings.double()
 
         # get quantized latent vectors
         z_q = torch.matmul(min_encodings, self.embedding.weight).view(z.shape)
@@ -82,11 +99,59 @@ class VectorQuantizer(nn.Module):
         # preserve gradients
         z_q = z + (z_q - z).detach()
 
+        if training:
+            self.ema_update(encodings, z.float())
+
         # perplexity
         e_mean = torch.mean(min_encodings, dim=0)
         perplexity = torch.exp(-torch.sum(e_mean * torch.log(e_mean + 1e-10)))
 
         return z_q, loss, (perplexity, min_encodings, min_encoding_indices)
+
+    # Reset unused codes to random values
+    def reset_codes(self, unused_codes):
+        if len(unused_codes.shape) == 0:
+            return
+        # uniform dist [0 1)
+        new_weight = torch.rand(len(unused_codes), self.embedding_dim)
+        # uniform dist [-1. / num_embeddings, 1. / num_embeddings)
+        new_weight = (2. / self.num_embeddings) * new_weight - 1. / self.num_embeddings
+
+        self.embedding.weight.data[unused_codes] = new_weight.to(self.embedding.weight.data[unused_codes])
+
+    def get_unused_codes(self):
+        return (self.n_entries == 0).nonzero().squeeze()
+
+    # https://github.com/shuningjin/discrete-text-rep/blob/fce851a81e0b170c04f1df2901700b31702fb7b3/src/models/vq_quantizer.py#L10
+
+    def ema_init(self, decay=0.99, epsilon=1e-9):
+        self._decay = decay
+        self._epsilon = epsilon
+        # K
+        self.register_buffer("_ema_cluster_size", torch.zeros(self.num_embeddings))
+        # (K, D)
+        self.register_buffer(
+            "_ema_w", torch.Tensor(self.num_embeddings, self.embedding_dim)
+        )
+        self._ema_w.data = self.embedding.weight.clone()
+
+    def ema_update(self, encodings, flat_input):
+        assert len(encodings.shape) == 2
+        with torch.no_grad():
+            # N moving average
+            self._ema_cluster_size = self._ema_cluster_size * self._decay + (1 - self._decay) * torch.sum(encodings, 0)
+
+            # additive smoothing to avoid zero count
+            n = torch.sum(self._ema_cluster_size.data)
+            self._ema_cluster_size = ((self._ema_cluster_size + self._epsilon) /
+                                      (n + self.num_embeddings * self._epsilon) * n)
+
+            # m moving average
+            dw = torch.matmul(encodings.t(), flat_input)
+            self._ema_w = self._ema_w * self._decay + (1 - self._decay) * dw
+
+            # e update
+            self.embedding.weight.data.copy_((self._ema_w / self._ema_cluster_size.unsqueeze(1)).double())
 
 
 class VQVAE(nn.Module):
@@ -97,7 +162,20 @@ class VQVAE(nn.Module):
         self.vq = VectorQuantizer(num_embeddings, embedding_dim)
         self.decoder = Decoder(embedding_dim, hidden_dim, input_dim, max_frames)
 
+    # zeroing vq n_entries
+    def zero_n_entries(self):
+        self.vq.n_entries = torch.zeros(self.vq.num_embeddings)
+
+    def get_unused_codes(self):
+        unused_codes = self.vq.get_unused_codes()
+        return unused_codes
+
+    # Reset unused vq codes to random values
+    def reset_codes(self, unused_codes):
+        self.vq.reset_codes(unused_codes)
+
     def forward(self, x):
+        x, training = x
         z = self.encoder(x)
-        quantized, loss, _ = self.vq(z)
-        return self.decoder(quantized), loss
+        quantized, loss, info = self.vq(z, training=training)
+        return self.decoder(quantized), loss, info
