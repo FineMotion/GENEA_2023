@@ -2,10 +2,12 @@ from pymo.parsers import BVHParser
 from pymo.preprocessing import MocapParameterizer, ConstantsRemover, Numpyfier, RootTransformer, JointSelector
 from sklearn.pipeline import Pipeline
 import numpy as np
+import joblib as jl
+import os
 
 FPS = 30
 
-joints = ['body_world', 'root', 'spine', 'shoulder',
+joints = ['body_world', 'spine', 'shoulder',
           'arm', 'wrist', 'forearm', 'head', 'neck0',
           'spine3', 'spine2', 'spine1', 'spine0']
 
@@ -26,6 +28,8 @@ def data_pipline(parsed_data):
     ])
 
     processed_samples = data_pipe.fit_transform([parsed_data])
+
+    jl.dump(data_pipe, 'pipeline.sav')
     return processed_samples[0]
 
 

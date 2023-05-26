@@ -4,21 +4,17 @@ from process_bvh import *
 from process_tsv import *
 from tqdm import tqdm
 import os
-
-MODE = "trn"
-
-audio_folder_name = "main-agent"
-bvh_folder_name = "main-agent" if audio_folder_name == "interloctr" else "interloctr"
-
-AUDIO_FOLDER = os.path.join("data", MODE, audio_folder_name, "wav")
-BVH_FOLDER = os.path.join("data", MODE, bvh_folder_name, "bvh")
-TSV_FOLDER = os.path.join("data", MODE, audio_folder_name, "tsv")
-
-SPLIT_AUDIO_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/audio")
-SPLIT_GESTURES_FOLDER = os.path.join("split_data", MODE, "ma_audio_i_bvh/gestures")
+from argparse import ArgumentParser
 
 MIN_BEATS_LEN = 9
 MAX_BEATS_LEN = 18
+
+
+def add_args(parent_parser: ArgumentParser):
+    parser = ArgumentParser(parents=[parent_parser], add_help=False)
+    parser.add_argument('--mode', type=str, default='trn')
+    parser.add_argument('--a', type=str, default='main-agent')
+    return parser
 
 
 def ensure_dir_exists(dir_path):
@@ -110,9 +106,8 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
         assert bvh_record in bvh_recordings
         assert tsv_record in tsv_recordings
 
-        """
         split_one_speaker(audio_record, bvh_record, tsv_record)
-        """
+
         name = audio_record[audio_record.rfind("/") + 1:audio_record.rfind(".")]
         split_audio_folder = Path(os.path.join(SPLIT_AUDIO_FOLDER, name))
         split_bvh_folder = Path(os.path.join(SPLIT_GESTURES_FOLDER, name))
@@ -140,4 +135,19 @@ def main(audio_folder: Path, bvh_folder: Path, tsv_folder: Path):
 
 
 if __name__ == '__main__':
+    arg_parser = ArgumentParser()
+    arg_parser = add_args(arg_parser)
+    args = arg_parser.parse_args()
+    MODE = args.mode
+    audio_folder_name = args.a
+
+    bvh_folder_name = "main-agent" if audio_folder_name == "interloctr" else "interloctr"
+
+    AUDIO_FOLDER = os.path.join("data", MODE, audio_folder_name, "wav")
+    BVH_FOLDER = os.path.join("data", MODE, bvh_folder_name, "bvh")
+    TSV_FOLDER = os.path.join("data", MODE, audio_folder_name, "tsv")
+
+    SPLIT_AUDIO_FOLDER = os.path.join("split_data_no_root", MODE, "ma_audio_i_bvh/audio")
+    SPLIT_GESTURES_FOLDER = os.path.join("split_data_no_root", MODE, "ma_audio_i_bvh/gestures")
+
     main(Path(AUDIO_FOLDER), Path(BVH_FOLDER), Path(TSV_FOLDER))
