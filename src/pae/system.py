@@ -43,7 +43,7 @@ class PAESystem(pl.LightningModule):
         input_channels = joints*channels
         if add_root:
             input_channels += 3
-        self.model = PhaseAutoEncoder(input_channels=joints*channels, embedding_channels=phases,
+        self.model = PhaseAutoEncoder(input_channels=input_channels, embedding_channels=phases,
                                       time_range=int(fps * window) + 1, channels_per_joint=channels, window=window,
                                       add_root=add_root)
         self.mse = torch.nn.MSELoss()
@@ -71,8 +71,11 @@ class PAESystem(pl.LightningModule):
         bs, sl, channels = x_rot.shape
         joints = channels // 6
 
-        x_rot = x_rot.view(bs * sl * joints, 6)  # bs * sl * joints, 6
-        y_rot = y_rot.view(bs * sl * joints, 6)  # bs * sl * joints, 6
+        x_rot = x_rot.reshape(bs, sl, joints, 6)  # bs, sl, joints, 6
+        y_rot = y_rot.reshape(bs, sl, joints, 6)  # bs, sl, joints, 6
+
+        x_rot = x_rot.reshape(bs * sl * joints, 6)  # bs * sl * joints, 6
+        y_rot = y_rot.reshape(bs * sl * joints, 6)  # bs * sl * joints, 6
 
         x_rotmats = rotmat_from_ortho6d(x_rot)
         y_rotmats = rotmat_from_ortho6d(y_rot)
