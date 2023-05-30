@@ -21,7 +21,7 @@ class SimpleMotionDataset(Dataset):
         return self.data.shape[0]
 
     def __getitem__(self, item):
-        torch.FloatTensor(self.data[item])
+        return torch.FloatTensor(self.data[item])
 
     @staticmethod
     def collate_fn(batch):

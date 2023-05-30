@@ -8,7 +8,11 @@ def normalize_vector(v):
     if gpu < 0:
         eps = torch.autograd.Variable(torch.FloatTensor([1e-8])).to(torch.device('cpu'))
     else:
-        eps = torch.autograd.Variable(torch.FloatTensor([1e-8])).to(torch.device(f'cuda:{gpu}'))
+        if torch.cuda.is_available():
+            eps = torch.autograd.Variable(torch.FloatTensor([1e-8])).to(torch.device(f'cuda:{gpu}'))
+        else:
+            eps = torch.autograd.Variable(torch.FloatTensor([1e-8])).to(torch.device(f'mps'))
+
     v_mag = torch.max(v_mag, eps)
     v_mag = v_mag.view(bs, 1).expand(bs, v.shape[1])
     v = v / v_mag

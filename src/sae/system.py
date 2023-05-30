@@ -13,7 +13,7 @@ from src.utils.algem import rotmat_from_ortho6d
 class SAESystem(pl.LightningModule):
     def __init__(self, input_dim, trn_folder: str, val_folder: str, loss_name: str, batch_size: int = 128):
         super().__init__()
-        self.model = SimpleAutoEncoder(input_dim=input_dim, output_dim=input_dim, hidden_size=input_dim // 6)
+        self.model = SimpleAutoEncoder(input_dim=input_dim, output_dim=input_dim // 6, hidden_size=input_dim // 3)
         self.loss_name = loss_name
         self.batch_size = batch_size
         if loss_name == 'mse':
@@ -32,6 +32,8 @@ class SAESystem(pl.LightningModule):
             joints = x.shape[1] // 6
             x = x.reshape(bs, joints, 6)
             y = y.reshape(bs, joints, 6)
+            x = x.reshape(bs * joints, 6)
+            y = y.reshape(bs * joints, 6)
             x = rotmat_from_ortho6d(x)
             y = rotmat_from_ortho6d(y)
             return self.loss(y, x)
