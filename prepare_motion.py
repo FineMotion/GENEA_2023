@@ -52,12 +52,41 @@ def ortho6d(src_path: Path, dst_folder: Path):
     np.save(str(dst_path), result)
 
 
+def ortho6d_inverse(src_path: Path, dst_folder: Path):
+    """
+    Converts input
+    input: joint1_a1x, joint1_a1y, ..., joint1_a2z, joint2_a1x, ..., jointN_a2z, root_Xvel, root_Yvel, root_Zvel
+    output: join1_a1x, joint2_a1x, ..... jointN_a1x, joint1_a1y, ... , jointN_a2z, root_Xpos, root_Ypos, root_Zpos
+    """
+    data = np.load(str(src_path))
+    logging.info(f'{src_path.name} shape: {data.shape}')
+
+    rotation_channels = data.shape[-1] - 3
+    assert rotation_channels % 6 == 0
+
+    num_joints = rotation_channels // 6
+    channel_rotations = data[:, :-3].reshape(data.shape[0], num_joints, 6).transpose((0, 2, 1)).reshape(data.shape[0], -1)
+    root_velocities = data[:, -3:]
+    root_positions = np.zeros(root_velocities.shape)
+    root_positions[0] = root_velocities[0]
+    for i in range(1, root_positions.shape[0]):
+        root_positions[i] = root_positions[i-1] + root_velocities[i]
+
+    result = np.zeros(data.shape)
+    result[:, :-3] = channel_rotations
+    result[:, -3:] = root_positions
+
+    dst_path = dst_folder / src_path.name
+    np.save(str(dst_path), result)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     arg_parser = ArgumentParser()
     arg_parser.add_argument("--src", help="Folder with positions")
     arg_parser.add_argument("--dst", help="Folder to store joint_velocities")
-    arg_parser.add_argument("--mode", help="Type of preprocessing pipeline", choices=["joint_velocities", "ortho6d"],
+    arg_parser.add_argument("--mode", help="Type of preprocessing pipeline",
+                            choices=["joint_velocities", "ortho6d", "ortho6d_inverse"],
                             default="joint_velocities")
     args = arg_parser.parse_args()
 
@@ -71,5 +100,7 @@ if __name__ == '__main__':
             joint_velocities(src_file, dst_folder)
         elif args.mode == "ortho6d":
             ortho6d(src_file, dst_folder)
+        elif args.mode == "ortho6d_inverse":
+            ortho6d_inverse(src_file, dst_folder)
         else:
             assert False
