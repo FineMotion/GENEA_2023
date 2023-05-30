@@ -16,5 +16,3 @@ class GeodesicLoss(nn.Module):
         cos = ( m[:, 0, 0] + m[:, 1, 1] + m[:,2,2] - 1)/2
         theta = torch.acos(torch.clamp(cos, -1+self.eps, 1-self.eps))
         return torch.mean(theta)
-
-

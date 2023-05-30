@@ -13,8 +13,8 @@ from .model import PhaseAutoEncoder
 from .dataset import AutoEncoderDataset
 from .optimizer import AdamW
 from .scheduler import CyclicRWithRestarts
-from .utils import rotmat_from_ortho6d
-from .loss import GeodesicLoss
+from src.utils.algem import rotmat_from_ortho6d
+from src.utils.geodesic import GeodesicLoss
 
 
 class PAESystem(pl.LightningModule):
