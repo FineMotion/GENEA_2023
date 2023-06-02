@@ -1,43 +1,58 @@
 from torch import nn
+from esresnext.model.esresnet_fbsp import ESResNeXtFBSP
+from typing import Optional
+
+SAMPLE_RATE = 44100
+FPS = 30
+HOP_LENGTH = SAMPLE_RATE // FPS
 
 
 class AudioEncoder(nn.Module):
-    def __init__(self, embedding_dim, input_size=26, hidden_size=64, num_layers=3):
+    def __init__(self,
+                 embed_dim: int = 1024,
+                 # audio
+                 n_fft: int = HOP_LENGTH * 2,
+                 hop_length: Optional[int] = HOP_LENGTH,
+                 win_length: Optional[int] = 2 * HOP_LENGTH,
+                 window: Optional[str] = 'blackmanharris',
+                 normalized: bool = True,
+                 onesided: bool = True,
+                 spec_height: int = -1,
+                 spec_width: int = -1,
+                 apply_attention: bool = True,
+                 ):
         super().__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, embedding_dim)
+
+        self.audio = ESResNeXtFBSP(
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=win_length,
+            window=window,
+            normalized=normalized,
+            onesided=onesided,
+            spec_height=spec_height,
+            spec_width=spec_width,
+            num_classes=embed_dim,
+            apply_attention=apply_attention,
+            pretrained=False
+        )
 
     def forward(self, audio):
         # audio shape: batch_size, sequence_length, input_size
-
-        print(audio.dtype)
-        output, _ = self.lstm(audio)
-        last_output = output[:, -1, :]
-        embedding = self.fc(last_output)
-        return embedding
+        return self.audio(audio.to(self.device))
 
 
 class GestureEncoder(nn.Module):
-    def __init__(self, embedding_dim, input_size=57, hidden_size=64, num_layers=3):
+    def __init__(self, embedding_dim, input_size=1024, hidden_size=512):
         super().__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, embedding_dim)
+        self.linears = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, embedding_dim),
+        )
 
     def forward(self, gestures):
-        # gestures shape: batch_size, sequence_length, input_size
-        output, _ = self.lstm(gestures)
-        last_output = output[:, -1, :]
-        embedding = self.fc(last_output)
-        return embedding
-
-
-class CLIPModel(nn.Module):
-    def __init__(self, embedding_dim):
-        super().__init__()
-        self.audio_encoder = AudioEncoder(embedding_dim).double()
-        self.gesture_encoder = GestureEncoder(embedding_dim).double()
-
-    def forward(self, audio, gestures):
-        audio_embeddings = self.audio_encoder(audio)
-        gesture_embeddings = self.gesture_encoder(gestures)
-        return audio_embeddings, gesture_embeddings
+        # gestures shape: batch_size, input_size
+        return self.linears(gestures)

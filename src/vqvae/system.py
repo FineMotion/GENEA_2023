@@ -60,8 +60,8 @@ class VQVAESystem(pl.LightningModule):
 
 
 class VQVAEDataModule(pl.LightningDataModule):
-    def __init__(self, trn_data_path='clip_data_min_beats/trn/ma_audio_i_bvh/gestures',
-                 val_data_path='clip_data_min_beats/val/ma_audio_i_bvh/gestures',
+    def __init__(self, trn_data_path='clip_data_min_beats/trn',
+                 val_data_path='clip_data_min_beats/val',
                  batch_size: int = 128, max_frames=18):
         super().__init__()
         self.val_dataset = None
@@ -76,10 +76,19 @@ class VQVAEDataModule(pl.LightningDataModule):
     def setup(self, stage=None) -> None:
         self.trn_dataset = GestureDataset(self.train_path)
         self.val_dataset = GestureDataset(self.val_path)
+        print("Train size:")
+        print(len(self.trn_dataset))
+        print("Val size:")
+        print(len(self.val_dataset))
 
     def collate_fn(self, batch):
-        vectors_padded = [torch.cat([b, torch.zeros((b.shape[0],
-                                                     self.max_frames - b.shape[1]))], dim=1) for b in batch]
+        vectors_padded = []
+        for b in batch:
+            ones = torch.ones(b.shape[0], self.max_frames - b.shape[1])
+            last_val = b[:, -1].unsqueeze(1)
+            last_val = last_val.expand_as(ones)
+
+            vectors_padded.append(torch.cat([b, ones * last_val], dim=1))
         return torch.stack(vectors_padded)
 
     def train_dataloader(self):
