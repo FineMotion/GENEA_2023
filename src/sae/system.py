@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader
 
 from .model import SimpleAutoEncoder
 from .dataset import SimpleMotionDataset
-from src.utils.geodesic import GeodesicLoss
-from src.utils.algem import rotmat_from_ortho6d
+from src.training.geodesic import GeodesicLoss
+from src.training.algem import rotmat_from_ortho6d
 
 
 class SAESystem(pl.LightningModule):

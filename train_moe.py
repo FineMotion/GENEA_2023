@@ -1,12 +1,12 @@
 import logging
 from argparse import ArgumentParser
-from src.pae.system import PAESystem, PAEDataModule
-from pytorch_lightning import Trainer
+from src.mann.system import ModeAdaptiveSystem
+from src.training.args import add_trainer_args
 from pathlib import Path
 import shutil
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from src.training.args import add_trainer_args
+from pytorch_lightning import Trainer
 
 
 if __name__ == '__main__':
@@ -16,10 +16,10 @@ if __name__ == '__main__':
     arg_parser.add_argument("--force", action="store_true")
     arg_parser.add_argument("--trn_folder", type=str, required=True)
     arg_parser.add_argument("--val_folder", type=str, required=True)
-    arg_parser = PAESystem.add_system_args(arg_parser)
+    arg_parser = ModeAdaptiveSystem.add_system_args(arg_parser)
     arg_parser = add_trainer_args(arg_parser)
-
     args = arg_parser.parse_args()
+
     print(Path(args.serialize_dir))
     if Path(args.serialize_dir).exists():
         if args.force:
@@ -29,10 +29,11 @@ if __name__ == '__main__':
             logging.error(f"{args.serialize_dir} already exists! Choose another folder or use --force to overwrite")
             exit(-1)
 
-    Path(args.serialize_dir).mkdir(parents=True)
-    wandb_logger = WandbLogger(name=Path(args.serialize_dir).name, project='genea2023_pae')
+    serialize_dir = Path(args.serialize_dir)
+    serialize_dir.mkdir(parents=True)
+    wandb_logger = WandbLogger(name=serialize_dir.name, project='genea2023_moe')
     checkpoint_callback = ModelCheckpoint(
-        dirpath=args.serialize_dir,
+        dirpath=str(serialize_dir),
         verbose=True,
         monitor='val/loss',
         mode='min',
@@ -40,18 +41,16 @@ if __name__ == '__main__':
         save_last=True
     )
 
-    system = PAESystem(
-        joints=args.joints,
-        channels=args.channels,
-        phases=args.phases,
-        window=args.window,
-        fps=args.fps,
-        learning_rate=args.learning_rate,
-        batch_size=args.batch_size,
+    system = ModeAdaptiveSystem(
         trn_folder=args.trn_folder,
         val_folder=args.val_folder,
-        add_root=args.add_root
+        fps=args.fps,
+        audio_fps=args.audio_fps,
+        num_workers=args.num_workers,
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size
     )
+
     patience_callback = EarlyStopping(
         min_delta=0.0,
         mode='min',
@@ -59,17 +58,6 @@ if __name__ == '__main__':
         patience=args.patience
     )
 
-    # data_module = PAEDataModule(
-    #     trn_folder=args.trn_folder,
-    #     val_folder=args.val_fodler,
-    #     window=args.window,
-    #     fps=args.fps,
-    #     batch_size=args.batch_size
-    # )
-
     trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
                       callbacks=[checkpoint_callback, patience_callback])
     trainer.fit(model=system)
-
-
-

@@ -1,20 +1,20 @@
 import logging
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 import pytorch_lightning as pl
 from argparse import ArgumentParser
 
 import torch.nn
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, LRSchedulerTypeUnion
+from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 
 from .model import PhaseAutoEncoder
 from .dataset import AutoEncoderDataset
-from .optimizer import AdamW
-from .scheduler import CyclicRWithRestarts
-from src.utils.algem import rotmat_from_ortho6d
-from src.utils.geodesic import GeodesicLoss
+from src.training.adamw import AdamW
+from src.training.sgdr import CyclicRWithRestarts
+from src.training.algem import rotmat_from_ortho6d
+from src.training.geodesic import GeodesicLoss
 
 
 class PAESystem(pl.LightningModule):

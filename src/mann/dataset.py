@@ -10,15 +10,16 @@ import logging
 
 
 class ModeAdaptiveDataset(Dataset):
-    def __init__(self, data_files: Iterator[Union[str, Path]], phase_window: int = 13, window_size: float = 2.0,
-                 fps: int = 30, audio_fps: int = 30):
+    def __init__(self, data_files: Iterator[Union[str, Path]], samples: int = 13, window_size: float = 2.0,
+                 fps: int = 30, audio_fps: int = 30, lazy=False):
+        self.lazy = lazy
         self.fps = fps
         self.gather_padding = int(window_size * fps / 2)
         self.audio_padding = int(window_size * audio_fps / 2)
         self.audio_multiplier = audio_fps / fps
         # self.phases = phases
-        self.gather_window = np.linspace( -self.gather_padding, self.gather_padding, phase_window)
-        self.audio_window = np.linspace(-self.audio_padding, self.audio_padding, phase_window)
+        self.gather_window = np.linspace(-self.gather_padding, self.gather_padding, samples)
+        self.audio_window = np.linspace(-self.audio_padding, self.audio_padding, samples)
         logging.info(f"Phases gather window: {self.gather_window}")
 
         self.storage = []
@@ -52,7 +53,6 @@ class ModeAdaptiveDataset(Dataset):
         phase_window[phase_start: phase_end] = phase[phase_start: phase_end]
         phase_current = phase_window[self.gather_window, :]
 
-        # current_to_future = (phase_data.shape[0] - 1) // 2 + 1
         phase_next_start = pivot + 1
         phase_next_end = min(pivot + self.gather_padding + 2, phase.shape[0])
         phase_next_window = np.zeros((self.gather_padding + 1), phase.shape[0])
@@ -62,6 +62,10 @@ class ModeAdaptiveDataset(Dataset):
             self.gather_window[self.gather_padding:], :
         ]
         phase_velocity = phase_current[self.gather_padding:, :] - phase_next
+
+        phase_x = phase_current.flatten()
+        phase_y = np.concatenate([phase_next, phase_velocity], axis=-1).flatten()
+
 
         # MOTION
         current_frame = motion[pivot]
@@ -73,14 +77,15 @@ class ModeAdaptiveDataset(Dataset):
         audio_end = min(pivot + self.audio_padding + 1, audio.shape[1])
         audio_window = np.zeros((2*self.audio_padding + 1, audio.shape[1]))
         audio_window[audio_start: audio_end] = audio[audio_start: audio_end]
-        audio_current = audio_window[self.audio_window, :]
+        audio_current = audio_window[self.audio_window, :].flatten()
 
-        return torch.FloatTensor(current_frame), torch.FloatTensor(audio_current.flatten()),\
-            torch.FloatTensor(phase_current.flatten()), torch.FloatTensor(next_frame),\
-            torch.FloatTensor(np.concatenate([phase_next, phase_velocity], axis=-1).flatten())
+        main_input = np.concatenate([current_frame, audio_current], axis=0)
+        output = np.concatenate([next_frame, phase_y])
+        gating_input = phase_x
+
+        return torch.FloatTensor(main_input), torch.FloatTensor(output), torch.FloatTensor(gating_input)
 
     @staticmethod
     def collate_fn(batch):
-        pose_x, audio_x, phase_x, pose_y, phase_y = list(zip(*batch))
-        return torch.stack(pose_x, dim=0), torch.stack(audio_x, dim=0), torch.stack(phase_x, dim=0),\
-            torch.stack(pose_y, dim=0), torch.stack(phase_y, dim=0)
+        x, y, p,  = list(zip(*batch))
+        return torch.stack(x, dim=0), torch.stack(y, dim=0), torch.stack(p, dim=0)
