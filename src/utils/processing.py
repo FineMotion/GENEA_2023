@@ -51,3 +51,12 @@ def get_pose(data: MocapData, frame_num: int = 0) -> Dict[str, List[float]]:
     for joint in posed:
         result[joint] = list(posed[joint][1])
     return result
+
+
+def pose_from_numpy(frame_data: np.ndarray, joints: List[str]) -> Dict[str, List[float]]:
+    data_by_axis = frame_data.reshape(frame_data.shape[0] // 3, 3)
+    result = {}
+    assert data_by_axis.shape[0] == len(joints)
+    for i, joint in enumerate(joints):
+        result[joint] = list(data_by_axis[i])
+    return result

@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from tqdm import tqdm
 import numpy as np
 from src.utils.pipelines import position_pipeline, ortho6d_pipeline
+from multiprocessing import Pool
 
 
 def fit_pipeline(data_path: Path, pipeline_dir: Path, data_pipe: Pipeline):
@@ -29,14 +30,29 @@ def fit_pipeline(data_path: Path, pipeline_dir: Path, data_pipe: Pipeline):
     jl.dump(data_pipe, str(pipeline_path))
 
 
-def bvh2features(data_path: Path, dst_dir: Path, pipeline_dir: Path):
+def convert_bvh(bvh_path: Path, pipeline_path: Path, dst_dir: Path):
     bvh_parser = BVHParser()
+    logging.info(bvh_path)
+    data = bvh_parser.parse(str(bvh_path))
+    logging.info('Loading pipeline...')
+    data_pipe = jl.load(str(pipeline_path))
+    out_data = data_pipe.transform([data])[0]
+    logging.info(f'Output shape: {out_data.shape}')
+
+    dst_path = dst_dir / bvh_path.name.replace('.bvh', '.npy')
+    logging.info(dst_path)
+    np.save(str(dst_path), out_data)
+    return dst_path
+
+
+def bvh2features(data_path: Path, dst_dir: Path, pipeline_dir: Path, num_workers: int = 1):
+    # bvh_parser = BVHParser()
 
     pipeline_path = pipeline_dir / 'data_pip.sav'
     assert pipeline_path.exists()
 
-    logging.info('Loading pipeline...')
-    data_pipe = jl.load(str(pipeline_path))
+    # logging.info('Loading pipeline...')
+    # data_pipe = jl.load(str(pipeline_path))
 
     logging.info("Transforming data...")
     bvh_names = list(data_path.glob('*.bvh')) if data_path.is_dir() else [data_path]
@@ -44,17 +60,13 @@ def bvh2features(data_path: Path, dst_dir: Path, pipeline_dir: Path):
     if not dst_dir.exists():
         dst_dir.mkdir()
 
-    for bvh_path in tqdm(bvh_names):
-        data = bvh_parser.parse(str(bvh_path))
-        out_data = data_pipe.transform([data])[0]
-        logging.info(f'Output shape: {out_data.shape}')
-
-        dst_path = dst_dir / bvh_path.name.replace('.bvh', '.npy')
-        logging.info(dst_path)
-        np.save(str(dst_path), out_data)
+    with Pool(processes=num_workers) as pool:
+        results = pool.starmap(convert_bvh, [[bvh_path, pipeline_path, dst_dir] for bvh_path in bvh_names])
+        for dst_path in results:
+            logging.info(dst_path)
 
 
-def features2bvh(data_path: Path, dst_dir: Path, pipeline_dir: Path):
+def features2bvh(data_path: Path, dst_dir: Path, pipeline_dir: Path, num_workers: int = 1):
     logging.info('Loading pipeline...')
     pipeline_path = Path(pipeline_dir) / 'data_pip.sav'
     pipeline = jl.load(str(pipeline_path))  # type: Pipeline
@@ -92,6 +104,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--pipeline', choices=['position', 'ortho6d'], help='Pipeline type', default='position')
     arg_parser.add_argument('--src', help='Path to input data to process')
     arg_parser.add_argument('--dst', help='Path to store processed data')
+    arg_parser.add_argument('--workers', help="Number of parallel workers", type=int, default=1)
     args = arg_parser.parse_args()
 
     if args.mode == 'pipeline':
@@ -103,9 +116,9 @@ if __name__ == '__main__':
         assert data_pipe
         fit_pipeline(Path(args.src), Path(args.pipeline_dir), data_pipe)
     elif args.mode == 'bvh2npy':
-        bvh2features(Path(args.src), Path(args.dst), Path(args.pipeline_dir))
+        bvh2features(Path(args.src), Path(args.dst), Path(args.pipeline_dir), args.workers)
     elif args.mode == 'npy2bvh':
-        features2bvh(Path(args.src), Path(args.dst), Path(args.pipeline_dir))
+        features2bvh(Path(args.src), Path(args.dst), Path(args.pipeline_dir), args.workers)
     else:
         logging.warning(f'Unsupported mode: {args.mode}')
 
