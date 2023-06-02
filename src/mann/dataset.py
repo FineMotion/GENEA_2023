@@ -32,7 +32,7 @@ class ModeAdaptiveDataset(Dataset):
 
     def process_file(self, file_path: Union[str, Path], file_idx: int):
         data = np.load(file_path)
-        audio, motion, phase = data['X'], data['Y'], data['P']  # seq_len, features
+        audio, motion, phase = data['Audio'], data['Motion'], data['Phase']  # seq_len, features
         for pivot in range(motion.shape[0]):
             self.storage.append((file_idx, pivot))
         self.Audio.append(audio)
