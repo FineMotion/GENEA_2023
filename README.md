@@ -80,5 +80,32 @@ To train this model we need to:
 - Prepare audio features
 - Combine features together
 
+### Extract Phases
+For extract phases via PAE use following script:
+```commandline
+python .\extract_phases.py --src ./data/trn/velocities --dst ./data/trn/phases --checkpoint ./results/pae/last.ckpt
+python .\extract_phases.py --src ./data/val/velocities --dst ./data/val/phases --checkpoint ./results/pae/last.ckpt
+```
+
+### Extract Audio Features
+To extract MFCC features with specified fps use script
+```commandline
+python .\process_audio.py --src .\data\trn\main-agent\wav\ --dst data\trn\mfcc
+python .\process_audio.py --src .\data\val\main-agent\wav\ --dst data\val\mfcc
+```
+
+### Preparing motion features
+First, we try to use only joint rotations (without root velocity) to represent motion data extracting when training PAE of rotations:
+```commandline
+python .\prepare_motion.py --mode ortho6d --ignore_root --src ./data/trn/ortho6d --dst ./data/trn/ortho6d_fixed
+python .\prepare_motion.py --mode ortho6d --ignore_root --src ./data/trn/ortho6d --dst ./data/trn/ortho6d_fixed
+```
+
+### Making dataset
+Combine data
+```commandline
+python .\make_dataset.py --motion .\data\trn\ortho6d_fixed\ --audio .\data\trn\mfcc --phase .\data\trn\phases --dst .\data\trn\dataset
+python .\make_dataset.py --motion .\data\val\ortho6d_fixed\ --audio .\data\val\mfcc --phase .\data\val\phases --dst .\data\val\dataset
+```
 ## Training MoE
 to be continued...

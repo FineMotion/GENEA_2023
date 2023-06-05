@@ -23,7 +23,7 @@ if __name__ == '__main__':
         dst_folder.mkdir()
 
     for src_file in tqdm(src_folder.glob('*.wav')):
-        features = mfcc(args.src, args.sr, args.fps, args.n_fft)
-        dst_path = dst_folder / src_file.name
+        features = mfcc(src_file, args.sr, args.fps, args.n_fft)
+        dst_path = dst_folder / src_file.name.replace('.wav', '.npy')
         np.save(str(dst_path), features)
 

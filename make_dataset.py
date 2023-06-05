@@ -30,11 +30,12 @@ if __name__ == '__main__':
 
     audio_folder = Path(args.audio)
     motion_folders = [Path(folder) for folder in args.motion]
+    print(motion_folders)
     phase_folder = Path(args.phase)
 
     for audio_path in tqdm(audio_folder.glob('*.npy')):
         phase_path = phase_folder / audio_path.name
-        motion_files = [motion_folder / audio_path for motion_folder in motion_folders]
+        motion_files = [motion_folder / audio_path.name for motion_folder in motion_folders]
         motion_data = stack_motion(motion_files)
         audio_data = np.load(str(audio_path))
         phase_data = np.load(str(phase_path))

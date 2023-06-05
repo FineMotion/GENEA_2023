@@ -55,8 +55,12 @@ class PAESystem(pl.LightningModule):
         self.learning_rate = learning_rate
         self.batch_size = batch_size
 
-        self.trn_dataset = AutoEncoderDataset(Path(trn_folder).glob('*.npy'), window, fps)
-        self.val_dataset = AutoEncoderDataset(Path(val_folder).glob('*.npy'), window, fps)
+        # None folders for inference
+        self.trn_dataset = AutoEncoderDataset(
+            Path(trn_folder).glob('*.npy'), window, fps) if trn_folder is not None else None
+        self.val_dataset = AutoEncoderDataset(
+            Path(val_folder).glob('*.npy'), window, fps) if val_folder is not None else None
+
         self.optimizer = None
         self.scheduler = None
 
