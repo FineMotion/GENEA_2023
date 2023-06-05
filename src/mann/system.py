@@ -21,8 +21,9 @@ class ModeAdaptiveSystem(pl.LightningModule):
                                 help="Number of uniformly distributed features inside time window")
         arg_parser.add_argument("--window_size", type=float, default=2.0, help="Size of time window in seconds")
         arg_parser.add_argument("--fps", type=int, default=30, help="Motion data framerate")
-        arg_parser.add_argument("--audio_fps", type=int, default=40, help="Audio data framerate")
+        arg_parser.add_argument("--audio_fps", type=int, default=30, help="Audio data framerate")
         arg_parser.add_argument("--num_workers", type=int, default=1, help="Number of workers in train DataLoader")
+        return arg_parser
 
     def __init__(self, trn_folder: str, val_folder: str, gating_hidden: int = 64, main_hidden: int = 1024,
                  experts: int = 8, dropout: float = 0.3, samples: int = 13, window_size: float = 2.0,
@@ -30,10 +31,10 @@ class ModeAdaptiveSystem(pl.LightningModule):
         super().__init__()
         # gating_input = phases * 2 * samples
         self.trn_dataset = ModeAdaptiveDataset(
-            Path(trn_folder).glob('*.npy'), samples, window_size, fps, audio_fps
+            Path(trn_folder).glob('*.npz'), samples, window_size, fps, audio_fps
         )
         self.val_dataset = ModeAdaptiveDataset(
-            Path(val_folder).glob('*.npy'), samples, window_size, fps, audio_fps
+            Path(val_folder).glob('*.npz'), samples, window_size, fps, audio_fps
         )
         x, y, p = self.trn_dataset[0]
         main_input = x.shape[-1]
@@ -91,5 +92,5 @@ class ModeAdaptiveSystem(pl.LightningModule):
                           collate_fn=self.trn_dataset.collate_fn, num_workers=self.num_workers)
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.val_datset, batch_size=self.batch_size, shuffle=False,
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False,
                           collate_fn=self.val_dataset.collate_fn)

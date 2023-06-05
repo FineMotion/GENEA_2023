@@ -15,7 +15,7 @@ class ExpertLinear(nn.Module):
     def forward(self, x, weights):
         y = torch.zeros((x.shape[0], self.output_dim), device=x.device, requires_grad=True)
         for i in range(self.experts):
-            y += weights[:, i].unsqueeze(1) * (x.matmul(self.W[i, :, :]) + self.b[i, :, :])
+            y = y + weights[:, i].unsqueeze(1) * (x.matmul(self.W[i, :, :]) + self.b[i, :, :])
         return y
 
     @staticmethod
@@ -65,7 +65,7 @@ class MotionPredictionNetwork(nn.Module):
         x = self.elu(x)
 
         x = self.dropout(x)
-        x = self.E3(x)
+        x = self.E3(x, w)
         return x
 
 
