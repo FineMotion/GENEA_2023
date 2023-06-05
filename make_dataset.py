@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     dst_folder = Path(args.dst)
     if not dst_folder.exists():
-        dst_folder.mkdir()
+        dst_folder.mkdir(parents=True)
 
     audio_folder = Path(args.audio)
     motion_folders = [Path(folder) for folder in args.motion]
