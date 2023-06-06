@@ -30,12 +30,14 @@ class ModeAdaptiveSystem(pl.LightningModule):
                  fps: int = 30, audio_fps: int = 30, learning_rate=1e-4, batch_size: int = 32, num_workers: int = 1):
         super().__init__()
         # gating_input = phases * 2 * samples
+        trn_files = Path(trn_folder).glob('*.npz') if Path(trn_folder).is_dir() else [trn_folder]
+        # One sample to initialize shapes
         self.trn_dataset = ModeAdaptiveDataset(
-            Path(trn_folder).glob('*.npz'), samples, window_size, fps, audio_fps
+            trn_files, samples, window_size, fps, audio_fps
         )
         self.val_dataset = ModeAdaptiveDataset(
             Path(val_folder).glob('*.npz'), samples, window_size, fps, audio_fps
-        )
+        ) if val_folder is not None else None  # None for inference
         x, y, p = self.trn_dataset[0]
         main_input = x.shape[-1]
         main_output = y.shape[-1]
