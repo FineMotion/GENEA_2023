@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     serialize_dir = Path(args.serialize_dir)
     serialize_dir.mkdir(parents=True)
-    wandb_logger = WandbLogger(name=serialize_dir.name, project='genea2023_moe')
+    # wandb_logger = WandbLogger(name=serialize_dir.name, project='genea2023_moe')
     checkpoint_callback = ModelCheckpoint(
         dirpath=str(serialize_dir),
         verbose=True,
@@ -58,6 +58,6 @@ if __name__ == '__main__':
         patience=args.patience
     )
 
-    trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
+    trainer = Trainer(accelerator=args.accelerator, # logger=wandb_logger,
                       callbacks=[checkpoint_callback, patience_callback])
     trainer.fit(model=system)
