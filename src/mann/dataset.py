@@ -11,8 +11,8 @@ import logging
 
 class ModeAdaptiveDataset(Dataset):
     def __init__(self, data_files: Iterator[Union[str, Path]], samples: int = 13, window_size: float = 2.0,
-                 fps: int = 30, audio_fps: int = 30, lazy=False):
-        self.lazy = lazy
+                 fps: int = 30, audio_fps: int = 30, vel_included=False):
+        self.vel_included = vel_included
         self.fps = fps
         self.gather_padding = int(window_size * fps / 2)
         self.audio_padding = int(window_size * audio_fps / 2)
@@ -83,11 +83,13 @@ class ModeAdaptiveDataset(Dataset):
         phase_next = phase_next_window[
             self.gather_window[gather_padding_next:], :
         ]
-        phase_velocity = phase_current[gather_padding_next:, :] - phase_next
-
         phase_x = phase_current.flatten()
-        phase_y = np.concatenate([phase_next, phase_velocity], axis=-1).flatten()
 
+        if not self.vel_included:
+            phase_velocity = phase_current[gather_padding_next:, :] - phase_next
+            phase_y = np.concatenate([phase_next, phase_velocity], axis=-1).flatten()
+        else:
+            phase_y = phase_next.flatten()
 
         # MOTION
         current_frame = motion[pivot]

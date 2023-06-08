@@ -23,6 +23,8 @@ class ModeAdaptiveSystem(pl.LightningModule):
         arg_parser.add_argument("--fps", type=int, default=30, help="Motion data framerate")
         arg_parser.add_argument("--audio_fps", type=int, default=30, help="Audio data framerate")
         arg_parser.add_argument("--num_workers", type=int, default=1, help="Number of workers in train DataLoader")
+        arg_parser.add_argument("--vel_included", action="store_true",
+                                help="Flag to indicate phase velocity is already included")
         return arg_parser
 
     def __init__(self, trn_folder: str, val_folder: str, gating_hidden: int = 64, main_hidden: int = 1024,

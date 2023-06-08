@@ -33,8 +33,8 @@ python process_motion.py --mode bvh2npy --pipeline ./pipe_pos --src ./data/val/b
 ```
 - Calculate velocities with
 ```
-python prepare_motion.py --mode joint_velocities --src ./data/trn/positions --dst ./data/trn/velocities 
-python prepare_motion.py --mode joint_velocities --src ./data/trn/positions --dst ./data/trn/velocities 
+python prepare_motion.py --mode velocities --src ./data/trn/positions --dst ./data/trn/velocities 
+python prepare_motion.py --mode velocities --src ./data/trn/positions --dst ./data/trn/velocities 
 ```
 ### Ortho6D
 We also tried training PAE on [ortho6d](https://arxiv.org/pdf/1812.07035.pdf) joint rotations. 

@@ -30,6 +30,7 @@ def stack_data(data_files: Iterable[Path]):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     arg_parser = ArgumentParser()
     arg_parser.add_argument('--src', type=str, help="Path to data folder")
     arg_parser.add_argument('--dst', type=str, help="Folder to store results")
