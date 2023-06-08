@@ -83,13 +83,15 @@ class ModeAdaptiveDataset(Dataset):
         phase_next = phase_next_window[
             self.gather_window[gather_padding_next:], :
         ]
-        phase_x = phase_current.flatten()
 
         if not self.vel_included:
             phase_velocity = phase_current[gather_padding_next:, :] - phase_next
             phase_y = np.concatenate([phase_next, phase_velocity], axis=-1).flatten()
+            phase_x = phase_current.flatten()
         else:
             phase_y = phase_next.flatten()
+            phase_start = phase_current.shape[-1] // 2
+            phase_x = phase_current[:, :phase_start].flatten()
 
         # MOTION
         current_frame = motion[pivot]

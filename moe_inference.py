@@ -7,10 +7,12 @@ import logging
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
+from src.utils.norm import normalize, renormalize
 
 
-def predict(system, dataset, smooth: bool = False, alpha=0.5):
-    phases = dataset.Phase[0].shape[-1]
+def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False):
+    phases = dataset.Phase[0].shape[-1] if not vel_included else dataset.Phase[0].shape[-1] // 2
+    # phases = dataset.Phase[0].shape[-1]
     pose_size = dataset.Motion[0].shape[-1]
 
     gather_size = len(dataset.gather_window)
@@ -43,13 +45,15 @@ def predict(system, dataset, smooth: bool = False, alpha=0.5):
         next_phase = pred[:, pose_size:]
         # logging.debug(f"Next phase shape: {next_phase.shape}")
         next_phase = next_phase.reshape((future_gather + 1, 2*phases))
-        theta = next_phase[:, :phases]
-        delta = next_phase[:, phases:]
+        # next_phase = next_phase.reshape((future_gather + 1, phases))
+        theta = renormalize(next_phase[:, :phases].numpy(), phase_std, phase_mean)
+        delta = renormalize(next_phase[:, phases:].numpy(), vel_std, vel_mean)
+
         next_phase = alpha * theta + (1-alpha) * (
-                gating_input.reshape(gather_size, phases)[future_gather:, :] - delta)
+                renormalize(gating_input.reshape(gather_size, phases)[future_gather:, :].numpy(), phase_std, phase_mean) + delta)
 
         next_window = dataset.gather_window[future_gather:] + i + 1
-        predicted_phases[next_window, :] = next_phase.numpy()
+        predicted_phases[next_window, :] = normalize(next_phase, phase_std, phase_mean)
 
         current_pose = next_pose
         predicted_poses.append(current_pose.squeeze(0))
@@ -69,6 +73,9 @@ if __name__ == '__main__':
     arg_parser.add_argument('--dst', type=str, help="Path to store predictions")
     arg_parser.add_argument('--checkpoint', type=str, help="Path to checkpoint")
     arg_parser.add_argument('--smooth', action='store_true', help="Flag to activate motion smoothing")
+    arg_parser.add_argument('--alpha', type=float, help="Blending coefficient", default=0.5)
+    arg_parser.add_argument('--phase_norm', type=str, help="Path to phase normalization values")
+    arg_parser.add_argument('--vel_norm', type=str, help="Path no phase velocities normalization_values")
     arg_parser = ModeAdaptiveSystem.add_system_args(arg_parser)
     args = arg_parser.parse_args()
 
@@ -79,7 +86,8 @@ if __name__ == '__main__':
         window_size=args.window_size,
         audio_fps=args.audio_fps,
         samples=args.samples,
-        batch_size=1
+        batch_size=1,
+        vel_included=args.vel_included
     )
 
     checkpoint = torch.load(args.checkpoint, map_location='cpu')
@@ -87,16 +95,26 @@ if __name__ == '__main__':
     system.eval()
 
     src_folder = Path(args.src)
+    if src_folder.is_dir():
+        src_files = src_folder.glob('*.npz')
+    else:
+        src_files = [src_folder]
+
     dst_folder = Path(args.dst)
     if not dst_folder.exists():
         dst_folder.mkdir(parents=True)
 
-    for dataset_sample in src_folder.glob('*.npz'):
+    phase_norm = np.load(args.phase_norm)
+    phase_std, phase_mean = phase_norm['std'], phase_norm['mean']
+    vel_norm = np.load(args.vel_norm)
+    vel_std, vel_mean = vel_norm['std'], vel_norm['mean']
+    for dataset_sample in src_files:
         dataset = ModeAdaptiveDataset(
-            [dataset_sample], samples=args.samples, window_size=args.window_size, fps=args.fps, audio_fps=args.audio_fps
+            [dataset_sample], samples=args.samples, window_size=args.window_size, fps=args.fps,
+            audio_fps=args.audio_fps, vel_included=args.vel_included
         )
 
-        predictions = predict(system, dataset, args.smooth)
+        predictions = predict(system, dataset, args.smooth, args.alpha, args.vel_included)
 
         logging.info(f"{dataset_sample.name} output shape: {predictions.shape}")
         dst_path = dst_folder / dataset_sample.name.replace('.npz', '.npy')

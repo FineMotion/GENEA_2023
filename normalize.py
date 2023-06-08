@@ -5,20 +5,13 @@ from typing import Iterable
 import numpy as np
 from tqdm import tqdm
 from argparse import ArgumentParser
+from src.utils.norm import normalize, renormalize
 
 
 def get_normalization_values(data: np.ndarray):
     std = np.std(data, axis=0)
     mean = np.mean(data, axis=0)
     return std, mean
-
-
-def normalize(data, std, mean):
-    return (data - mean[np.newaxis, :]) / std[np.newaxis, :]
-
-
-def renormalize(data, std, mean):
-    return data * std[np.newaxis, :] + mean[np.newaxis, :]
 
 
 def stack_data(data_files: Iterable[Path]):
