@@ -1,3 +1,5 @@
+import logging
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -28,17 +30,18 @@ class ModeAdaptiveSystem(pl.LightningModule):
         return arg_parser
 
     def __init__(self, trn_folder: str, val_folder: str, gating_hidden: int = 64, main_hidden: int = 1024,
-                 experts: int = 8, dropout: float = 0.3, samples: int = 13, window_size: float = 2.0,
-                 fps: int = 30, audio_fps: int = 30, learning_rate=1e-4, batch_size: int = 32, num_workers: int = 1):
+                 experts: int = 8, dropout: float = 0.3, samples: int = 13, window_size: float = 2.0, fps: int = 30,
+                 audio_fps: int = 30, learning_rate=1e-4, batch_size: int = 32, num_workers: int = 1, vel_included=False):
         super().__init__()
         # gating_input = phases * 2 * samples
         trn_files = Path(trn_folder).glob('*.npz') if Path(trn_folder).is_dir() else [trn_folder]
+        logging.info(f"Phase velocities included: {vel_included}")
         # One sample to initialize shapes
         self.trn_dataset = ModeAdaptiveDataset(
-            trn_files, samples, window_size, fps, audio_fps
+            trn_files, samples, window_size, fps, audio_fps, vel_included=vel_included
         )
         self.val_dataset = ModeAdaptiveDataset(
-            Path(val_folder).glob('*.npz'), samples, window_size, fps, audio_fps
+            Path(val_folder).glob('*.npz'), samples, window_size, fps, audio_fps, vel_included=vel_included
         ) if val_folder is not None else None  # None for inference
         x, y, p = self.trn_dataset[0]
         main_input = x.shape[-1]
