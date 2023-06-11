@@ -56,9 +56,9 @@ if __name__ == '__main__':
         min_delta=0.0,
         mode='min',
         monitor='val/loss',
-        patience=args.patience
+        patience=50
     )
 
     trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
-                      callbacks=[checkpoint_callback, patience_callback])
+                      callbacks=[checkpoint_callback, patience_callback], max_epochs=50)
     trainer.fit(model=system)

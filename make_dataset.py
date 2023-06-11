@@ -8,9 +8,11 @@ from tqdm import tqdm
 
 def stack_features(features_files: List[Path]):
     data = [np.load(str(fl)) for fl in features_files]
-    sample_length = data[0].shape[0]
+    sample_length = max([ft.shape[0] for ft in data])
     for i in range(len(data)):
-        assert data[i].shape[0] == sample_length
+        if data[i].shape[0] < sample_length:
+            paddings = np.zeros((sample_length - data[i].shape[0], data[i].shape[1]))
+            data[i] = np.concatenate([data[i], paddings], axis=0)
 
     return np.concatenate(data, axis=-1)
 

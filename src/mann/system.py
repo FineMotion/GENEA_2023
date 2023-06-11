@@ -8,7 +8,7 @@ from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADER
 from pathlib import Path
 from argparse import ArgumentParser
 
-from .model import GatingNetwork, MotionPredictionNetwork
+from .model import GatingNetwork, MotionPredictionNetwork, AudioEncoder
 from .dataset import ModeAdaptiveDataset
 from src.training.adamw import AdamW
 from src.training.sgdr import CyclicRWithRestarts
@@ -43,14 +43,16 @@ class ModeAdaptiveSystem(pl.LightningModule):
         self.val_dataset = ModeAdaptiveDataset(
             Path(val_folder).glob('*.npz'), samples, window_size, fps, audio_fps, vel_included=vel_included
         ) if val_folder is not None else None  # None for inference
-        x, y, p = self.trn_dataset[0]
+        x, a, y, p = self.trn_dataset[0]
         main_input = x.shape[-1]
         main_output = y.shape[-1]
         gating_input = p.shape[-1]
+        audio_input = a.shape[-1]
+        audio_hidden = main_input
 
         self.gating = GatingNetwork(gating_input, gating_hidden, experts, dropout)
-        self.motion = MotionPredictionNetwork(main_input, main_hidden, main_output, experts, dropout)
-
+        self.motion = MotionPredictionNetwork(2*main_input, main_hidden, main_output, experts, dropout)
+        self.audio_encoder = AudioEncoder(audio_input, audio_hidden, audio_hidden)
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -58,21 +60,23 @@ class ModeAdaptiveSystem(pl.LightningModule):
         self.optimizer = None
         self.scheduler = None
 
-    def forward(self, x, p):
+    def forward(self, x, a, p):
+        a = self.audio_encoder(a)
         w = self.gating(p)
+        x = torch.cat([x, a], dim=-1)
         y = self.motion(x, w)
         return y
 
     def training_step(self, batch, batch_idx):
-        x, y, p = batch
-        pred = self.forward(x, p)
+        x,a, y, p = batch
+        pred = self.forward(x, a, p)
         loss = self.custom_loss(y, pred)
         self.log('train/loss', loss)
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
-        x, y, p = batch
-        pred = self.forward(x, p)
+        x, a, y, p = batch
+        pred = self.forward(x, a, p)
         loss = self.custom_loss(y, pred)
         self.log('val/loss', loss)
         return {'loss': loss}
@@ -80,19 +84,21 @@ class ModeAdaptiveSystem(pl.LightningModule):
     def custom_loss(self, y, pred):
         return F.mse_loss(pred, y)
 
-    def configure_optimizers(self):
-        self.optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
-        self.scheduler = CyclicRWithRestarts(
-            optimizer=self.optimizer, batch_size=self.batch_size, epoch_size=len(self.trn_dataset),
-            restart_period=10, t_mult=2, policy="cosine", verbose=True
-        )
-        return [self.optimizer], [
-            {"scheduler": self.scheduler, "interval": "step"}
-        ]
+    # def configure_optimizers(self):
+    #     self.optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+    #     self.scheduler = CyclicRWithRestarts(
+    #         optimizer=self.optimizer, batch_size=self.batch_size, epoch_size=len(self.trn_dataset),
+    #         restart_period=10, t_mult=2, policy="cosine", verbose=True
+    #     )
+    #     return [self.optimizer], [
+    #         {"scheduler": self.scheduler, "interval": "step"}
+    #     ]
 
-    def on_train_epoch_start(self) -> None:
-        # call epoch step on scheduler
-        self.scheduler.epoch_step()
+    # def on_train_epoch_start(self) -> None:
+    #     # call epoch step on scheduler
+    #     self.scheduler.epoch_step()
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-4)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,

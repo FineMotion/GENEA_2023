@@ -69,3 +69,42 @@ class MotionPredictionNetwork(nn.Module):
         return x
 
 
+class LinearWithBatchNom(nn.Module):
+    def __init__(self, input_dim, output_dim, context_length: int = 61):
+        super(LinearWithBatchNom, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim)
+        self.batch_norm = nn.BatchNorm1d(context_length)
+        self.dropout = nn.Dropout(0.1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.linear(x)
+        x = self.batch_norm(x)
+        x = torch.relu(x)
+        x = self.dropout(x)
+        return x
+
+
+class AudioEncoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, pivot: int = 30):
+        super(AudioEncoder, self).__init__()
+        self.highway = nn.Sequential(
+            LinearWithBatchNom(input_dim, hidden_dim),
+            LinearWithBatchNom(hidden_dim, hidden_dim),
+            LinearWithBatchNom(hidden_dim, hidden_dim)
+        )
+        self.pivot = pivot
+        self.rnn = nn.GRU(hidden_dim, hidden_dim, batch_first=True, bidirectional=True, num_layers=2)
+        self.batch_norm = nn.BatchNorm1d(2*hidden_dim)
+        self.dropout = nn.Dropout(0.1)
+        self.out = nn.Linear(2*hidden_dim, output_dim)
+
+    def forward(self, x):
+        # batch_size, seq_len, input_dim
+        x = self.highway(x)  # batch_size, seq_len, hidden
+        x, _ = self.rnn(x)  # batch_size, seq_len, 2*hidden
+        x = x[:, self.pivot, :]  # batch_size, 2*hidden
+        x = self.batch_norm(x)
+        x = torch.relu(x)
+        x = self.dropout(x)
+        x = self.out(x)
+        return x

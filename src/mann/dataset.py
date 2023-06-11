@@ -99,16 +99,16 @@ class ModeAdaptiveDataset(Dataset):
 
         # AUDIO CONTROL
         audio_pivot = math.ceil(self.audio_multiplier * pivot)
-        audio_window = self.padded_sample(audio, audio_pivot, self.audio_padding)
-        audio_current = audio_window[self.audio_window + self.audio_padding, :].flatten()
+        audio_window = self.padded_sample(audio, audio_pivot, self.audio_padding)  # window_size, feature_dim
+        # audio_current = audio_window[self.audio_window + self.audio_padding, :].flatten()
 
-        main_input = np.concatenate([current_frame, audio_current], axis=0)
+        # main_input = np.concatenate([current_frame, audio_current], axis=0)
         output = np.concatenate([next_frame, phase_y])
         gating_input = phase_x
 
-        return torch.FloatTensor(main_input), torch.FloatTensor(output), torch.FloatTensor(gating_input)
+        return torch.FloatTensor(current_frame), torch.FloatTensor(audio_window), torch.FloatTensor(output), torch.FloatTensor(gating_input)
 
     @staticmethod
     def collate_fn(batch):
-        x, y, p,  = list(zip(*batch))
-        return torch.stack(x, dim=0), torch.stack(y, dim=0), torch.stack(p, dim=0)
+        x, a, y, p,  = list(zip(*batch))
+        return torch.stack(x, dim=0), torch.stack(a, dim=0), torch.stack(y, dim=0), torch.stack(p, dim=0)

@@ -32,14 +32,14 @@ def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False
     # current_pose = main_input[:pose_size]
 
     for i in tqdm(range(len(dataset))):
-        main_input, _, _ = dataset[i]
+        main_input, audio_input,  _, _ = dataset[i]
         main_input[:pose_size] = current_pose
         phase_window = dataset.padded_sample(predicted_phases, i, dataset.gather_padding)
         gating_input = torch.FloatTensor(phase_window[dataset.gather_window + dataset.gather_padding, :].flatten())
 
-        x, p = main_input.unsqueeze(0), gating_input.unsqueeze(0)
+        x, a, p = main_input.unsqueeze(0), audio_input.unsqueeze(0), gating_input.unsqueeze(0)
         with torch.no_grad():
-            pred = system.forward(x, p)
+            pred = system.forward(x,a, p)
 
         next_pose = pred[:, :pose_size]
         next_phase = pred[:, pose_size:]
@@ -118,6 +118,6 @@ if __name__ == '__main__':
 
         logging.info(f"{dataset_sample.name} output shape: {predictions.shape}")
         dst_path = dst_folder / dataset_sample.name.replace('.npz', '.npy')
-        np.save(str(dst_path), predictions)
+        np.save(str(dst_path), predictions[:, :150])
 
 
