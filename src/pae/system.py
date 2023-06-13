@@ -34,10 +34,12 @@ class PAESystem(pl.LightningModule):
                                 help="Size of time window in seconds")
         arg_parser.add_argument("--add_root", action="store_true",
                                 help="Option for additional feature with different number of channels")
+        arg_parser.add_argument("--loss", choices=["mse", "geodesic"], default="mse")
         return arg_parser
 
     def __init__(self, joints: int, channels: int, phases: int, window: float, fps: int, learning_rate: float,
-                 batch_size: int, trn_folder: str, val_folder: str, add_root: bool = False, *args, **kwargs):
+                 batch_size: int, trn_folder: str, val_folder: str, add_root: bool = False, loss_name: str = "mse",
+                 *args, **kwargs):
         super().__init__()
 
         input_channels = joints*channels
@@ -47,12 +49,18 @@ class PAESystem(pl.LightningModule):
                                       time_range=int(fps * window) + 1, channels_per_joint=channels, window=window,
                                       add_root=add_root)
         self.mse = torch.nn.MSELoss()
-        self.geodesic = GeodesicLoss()
+        self.loss_name = loss_name
+        if loss_name == "geodesic":
+            self.geodesic = GeodesicLoss()
         self.learning_rate = learning_rate
         self.batch_size = batch_size
 
-        self.trn_dataset = AutoEncoderDataset(Path(trn_folder).glob('*.npy'), window, fps)
-        self.val_dataset = AutoEncoderDataset(Path(val_folder).glob('*.npy'), window, fps)
+        # None folders for inference
+        self.trn_dataset = AutoEncoderDataset(
+            Path(trn_folder).glob('*.npy'), window, fps) if trn_folder is not None else None
+        self.val_dataset = AutoEncoderDataset(
+            Path(val_folder).glob('*.npy'), window, fps) if val_folder is not None else None
+
         self.optimizer = None
         self.scheduler = None
 
@@ -60,6 +68,9 @@ class PAESystem(pl.LightningModule):
         """
         Custom loss with geodesic and MSE components
         """
+        if self.loss_name == "mse":
+            mse = self.mse(y, x)
+            return mse, mse, None
         # batch_size, seq_len, channels (joints * 6 + 3)
         x_root = x[:, :, -3:]
         y_root = y[:, :, -3:]
@@ -96,7 +107,8 @@ class PAESystem(pl.LightningModule):
 
         self.log('trn/loss', loss)
         self.log('trn/mse', mse)
-        self.log('trn/geodesic', geodesic)
+        if geodesic is not None:
+            self.log('trn/geodesic', geodesic)
 
         t_cur = self.scheduler.t_epoch + self.scheduler.batch_increments[self.scheduler.iteration]
         for i, (lr, wd) in enumerate(self.scheduler.get_lr(t_cur)):
@@ -111,7 +123,8 @@ class PAESystem(pl.LightningModule):
 
         self.log('val/loss', loss)
         self.log('val/mse', mse)
-        self.log('val/geodesic', geodesic)
+        if geodesic is not None:
+            self.log('val/geodesic', geodesic)
         return loss
 
     def configure_optimizers(self):

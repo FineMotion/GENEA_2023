@@ -35,3 +35,12 @@ def ortho6d_pipeline():
         ('np', Numpyfier()),
     ])
     return data_pipe
+
+
+def ortho6d_full_pipeline():
+    data_pipe = Pipeline([
+        ('ortho6d', MocapParameterizer('ortho6d')),
+        ('clsel', ChannelSelector(["a1x", "a1y", "a1z", "a2x", "a2y", "a2z"], filter_root=False)),
+        ('np', Numpyfier())
+    ])
+    return data_pipe

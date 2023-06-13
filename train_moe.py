@@ -48,16 +48,17 @@ if __name__ == '__main__':
         audio_fps=args.audio_fps,
         num_workers=args.num_workers,
         learning_rate=args.learning_rate,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        vel_included=args.vel_included
     )
 
     patience_callback = EarlyStopping(
         min_delta=0.0,
         mode='min',
         monitor='val/loss',
-        patience=args.patience
+        patience=50
     )
 
     trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
-                      callbacks=[checkpoint_callback, patience_callback])
+                      callbacks=[checkpoint_callback, patience_callback], max_epochs=50)
     trainer.fit(model=system)

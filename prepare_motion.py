@@ -6,7 +6,7 @@ from src.utils.filtering import butter
 from tqdm import tqdm
 
 
-def joint_velocities(src_path: Path, dst_folder: Path):
+def velocities(src_path: Path, dst_folder: Path):
     positions = np.load(str(src_path))
     logging.info(f'{src_path.name} shape: {positions.shape}')
 
@@ -100,15 +100,15 @@ if __name__ == '__main__':
     arg_parser.add_argument("--src", help="Folder with positions")
     arg_parser.add_argument("--dst", help="Folder to store joint_velocities")
     arg_parser.add_argument("--mode", help="Type of preprocessing pipeline",
-                            choices=["joint_velocities", "ortho6d", "ortho6d_inverse"],
-                            default="joint_velocities")
+                            choices=["velocities", "ortho6d", "ortho6d_inverse"],
+                            default="velocities")
     arg_parser.add_argument("--ignore_root", help="Filter additional root data", action="store_true")
     args = arg_parser.parse_args()
 
     src_folder = Path(args.src)
     dst_folder = Path(args.dst)
     if not dst_folder.exists():
-        dst_folder.mkdir()
+        dst_folder.mkdir(parents=True)
 
     if src_folder.is_dir():
         src_files = src_folder.glob('*.npy')
@@ -116,8 +116,8 @@ if __name__ == '__main__':
         src_files = [src_folder]
 
     for src_file in src_files:
-        if args.mode == "joint_velocities":
-            joint_velocities(src_file, dst_folder)
+        if args.mode == "velocities":
+            velocities(src_file, dst_folder)
         elif args.mode == "ortho6d":
             ortho6d(src_file, dst_folder, args.ignore_root)
         elif args.mode == "ortho6d_inverse":
