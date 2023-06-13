@@ -31,26 +31,31 @@ if __name__ == '__main__':
         dst_folder.mkdir(parents=True)
     logging.basicConfig(level=logging.INFO, filename=str(dst_folder / "log.txt"))
 
-    motion_folders = [Path(folder) for folder in args.motion]
+    motion_folders = [Path(folder) for folder in args.motion] if args.motion is not None else []
     audio_folders = [Path(folder) for folder in args.audio]
-    phase_folders = [Path(folder) for folder in args.phase]
+    phase_folders = [Path(folder) for folder in args.phase] if args.phase is not None else []
     logging.info(f"Motion: {motion_folders}\n"
                  f"Audio: {audio_folders}\n"
                  f"Phase: {phase_folders}")
 
     for audio_path in tqdm(audio_folders[0].glob('*.npy')):
-        motion_files = [motion_folder / audio_path.name for motion_folder in motion_folders]
         audio_files = [audio_folder / audio_path.name for audio_folder in audio_folders]
-        phase_files = [phase_folder / audio_path.name for phase_folder in phase_folders]
-        motion_data = stack_features(motion_files)
         audio_data = stack_features(audio_files)
-        phase_data = stack_features(phase_files)
+
+        motion_data = None
+        if len(motion_folders) > 0:
+            motion_files = [motion_folder / audio_path.name for motion_folder in motion_folders]
+            motion_data = stack_features(motion_files)
+        phase_data = None
+        if len(phase_folders) > 0:
+            phase_files = [phase_folder / audio_path.name for phase_folder in phase_folders]
+            phase_data = stack_features(phase_files)
 
         dst_path = dst_folder / audio_path.name.replace('.npy', '.npz')
         logging.info(f"{dst_path}:\n"
-                     f"Motion shape: {motion_data.shape}\n"
+                     f"Motion shape: {motion_data.shape if motion_data is not None else None}\n"
                      f"Audio shape: {audio_data.shape}\n"
-                     f"Phase shape: {phase_data.shape}\n")
+                     f"Phase shape: {phase_data.shape if phase_data is not None else None}\n")
 
         np.savez(str(dst_path), Audio=audio_data, Motion=motion_data, Phase=phase_data)
 

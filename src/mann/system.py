@@ -101,8 +101,10 @@ class ModeAdaptiveSystem(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=1e-4)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
+        # return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,
+        #                   collate_fn=self.trn_dataset.collate_fn, num_workers=self.num_workers, persistent_workers=True)
         return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,
-                          collate_fn=self.trn_dataset.collate_fn, num_workers=self.num_workers, persistent_workers=True)
+                          collate_fn=self.trn_dataset.collate_fn)
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
         return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False,

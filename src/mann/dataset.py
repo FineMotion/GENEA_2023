@@ -33,9 +33,11 @@ class ModeAdaptiveDataset(Dataset):
             self.process_file(data_file, file_idx)
 
     def process_file(self, file_path: Union[str, Path], file_idx: int):
-        data = np.load(file_path)
+        data = np.load(file_path, allow_pickle=True)
         audio, motion, phase = data['Audio'], data['Motion'], data['Phase']  # seq_len, features
-        for pivot in range(motion.shape[0]):
+        # logging.info(motion)
+        samples = audio.shape[0] if len(motion.shape) == 0 else motion.shape[0]
+        for pivot in range(samples):
             self.storage.append((file_idx, pivot))
         self.Audio.append(audio)
         self.Motion.append(motion)
@@ -74,6 +76,13 @@ class ModeAdaptiveDataset(Dataset):
         file_idx, pivot = self.storage[item]
         audio, motion, phase = self.Audio[file_idx], self.Motion[file_idx], self.Phase[file_idx]
 
+        # AUDIO CONTROL
+        audio_pivot = math.ceil(self.audio_multiplier * pivot)
+        audio_window = self.padded_sample(audio, audio_pivot, self.audio_padding)  # window_size, feature_dim
+        # audio_current = audio_window[self.audio_window + self.audio_padding, :].flatten()
+        if len(motion.shape) == 0:
+            return None, torch.FloatTensor(audio_window), None, None
+
         # PHASE
         phase_window = self.padded_sample(phase, pivot, self.gather_padding)
         phase_current = phase_window[self.gather_window + self.gather_padding, :]
@@ -96,11 +105,6 @@ class ModeAdaptiveDataset(Dataset):
         # MOTION
         current_frame = motion[pivot]
         next_frame = motion[pivot+1] if pivot + 1 < motion.shape[0] else np.zeros(motion.shape[1])
-
-        # AUDIO CONTROL
-        audio_pivot = math.ceil(self.audio_multiplier * pivot)
-        audio_window = self.padded_sample(audio, audio_pivot, self.audio_padding)  # window_size, feature_dim
-        # audio_current = audio_window[self.audio_window + self.audio_padding, :].flatten()
 
         # main_input = np.concatenate([current_frame, audio_current], axis=0)
         output = np.concatenate([next_frame, phase_y])

@@ -11,13 +11,15 @@ from src.utils.norm import normalize, renormalize
 
 
 def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False):
-    phases = dataset.Phase[0].shape[-1] if not vel_included else dataset.Phase[0].shape[-1] // 2
+    phases = system.trn_dataset.Phase[0].shape[-1] if not vel_included else system.trn_dataset.Phase[0].shape[-1] // 2
     # phases = dataset.Phase[0].shape[-1]
-    pose_size = dataset.Motion[0].shape[-1]
+    pose_size = system.trn_dataset.Motion[0].shape[-1]
+    gather_window = system.trn_dataset.gather_window
+    gather_padding = system.trn_dataset.gather_padding
+    gather_size = len(gather_window)
 
-    gather_size = len(dataset.gather_window)
     logging.debug(f"Phases: {phases}")
-    predicted_phases = np.zeros((len(dataset)+dataset.gather_padding+1, phases))
+    predicted_phases = np.zeros((len(dataset)+gather_padding+1, phases))
 
     future_gather = (gather_size - 1) // 2
     current_pose = torch.zeros(pose_size)
@@ -32,10 +34,10 @@ def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False
     # current_pose = main_input[:pose_size]
 
     for i in tqdm(range(len(dataset))):
-        main_input, audio_input,  _, _ = dataset[i]
-        main_input[:pose_size] = current_pose
-        phase_window = dataset.padded_sample(predicted_phases, i, dataset.gather_padding)
-        gating_input = torch.FloatTensor(phase_window[dataset.gather_window + dataset.gather_padding, :].flatten())
+        _, audio_input,  _, _ = dataset[i]
+        main_input = current_pose
+        phase_window = dataset.padded_sample(predicted_phases, i, gather_padding)
+        gating_input = torch.FloatTensor(phase_window[gather_window + gather_padding, :].flatten())
 
         x, a, p = main_input.unsqueeze(0), audio_input.unsqueeze(0), gating_input.unsqueeze(0)
         with torch.no_grad():
@@ -52,11 +54,11 @@ def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False
         next_phase = alpha * theta + (1-alpha) * (
                 renormalize(gating_input.reshape(gather_size, phases)[future_gather:, :].numpy(), phase_std, phase_mean) + delta)
 
-        next_window = dataset.gather_window[future_gather:] + i + 1
+        next_window = gather_window[future_gather:] + i + 1
         predicted_phases[next_window, :] = normalize(next_phase, phase_std, phase_mean)
 
-        current_pose = next_pose
-        predicted_poses.append(current_pose.squeeze(0))
+        current_pose = next_pose.squeeze(0)
+        predicted_poses.append(current_pose)
 
     poses = torch.stack(predicted_poses, dim=0).numpy()
     logging.debug(f"poses shape: {poses.shape}")
@@ -76,11 +78,12 @@ if __name__ == '__main__':
     arg_parser.add_argument('--alpha', type=float, help="Blending coefficient", default=0.5)
     arg_parser.add_argument('--phase_norm', type=str, help="Path to phase normalization values")
     arg_parser.add_argument('--vel_norm', type=str, help="Path no phase velocities normalization_values")
+    arg_parser.add_argument('--trn_sample', type=str, help="Path to train sample to initialize system with data shapes")
     arg_parser = ModeAdaptiveSystem.add_system_args(arg_parser)
     args = arg_parser.parse_args()
 
     system = ModeAdaptiveSystem(
-        trn_folder=args.src,
+        trn_folder=args.src if args.trn_sample is None else args.trn_sample,
         val_folder=None,
         fps=args.fps,
         window_size=args.window_size,
