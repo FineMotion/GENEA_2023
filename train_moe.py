@@ -49,7 +49,8 @@ if __name__ == '__main__':
         num_workers=args.num_workers,
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
-        vel_included=args.vel_included
+        vel_included=args.vel_included,
+        ortho6d_norm=args.ortho6d_norm
     )
 
     patience_callback = EarlyStopping(

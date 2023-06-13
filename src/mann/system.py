@@ -1,6 +1,7 @@
 import logging
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -12,6 +13,10 @@ from .model import GatingNetwork, MotionPredictionNetwork, AudioEncoder
 from .dataset import ModeAdaptiveDataset
 from src.training.adamw import AdamW
 from src.training.sgdr import CyclicRWithRestarts
+import numpy as np
+
+from ..training.algem import rotmat_from_ortho6d
+from ..training.geodesic import GeodesicLoss
 
 
 class ModeAdaptiveSystem(pl.LightningModule):
@@ -27,11 +32,14 @@ class ModeAdaptiveSystem(pl.LightningModule):
         arg_parser.add_argument("--num_workers", type=int, default=1, help="Number of workers in train DataLoader")
         arg_parser.add_argument("--vel_included", action="store_true",
                                 help="Flag to indicate phase velocity is already included")
+        arg_parser.add_argument("--ortho6d_norm", type=str,
+                                help="Path to ortho6d normalization values")
         return arg_parser
 
     def __init__(self, trn_folder: str, val_folder: str, gating_hidden: int = 64, main_hidden: int = 1024,
                  experts: int = 8, dropout: float = 0.3, samples: int = 13, window_size: float = 2.0, fps: int = 30,
-                 audio_fps: int = 30, learning_rate=1e-4, batch_size: int = 32, num_workers: int = 1, vel_included=False):
+                 audio_fps: int = 30, learning_rate=1e-4, batch_size: int = 32, num_workers: int = 1,
+                 vel_included=False, ortho6d_norm: str = None):
         super().__init__()
         # gating_input = phases * 2 * samples
         trn_files = Path(trn_folder).glob('*.npz') if Path(trn_folder).is_dir() else [trn_folder]
@@ -59,6 +67,11 @@ class ModeAdaptiveSystem(pl.LightningModule):
 
         self.optimizer = None
         self.scheduler = None
+        if ortho6d_norm is not None:
+            norm_values = np.load(ortho6d_norm)
+            self.std = nn.Parameter(torch.from_numpy(norm_values['std']), requires_grad=False)
+            self.mean = nn.Parameter(torch.from_numpy(norm_values['mean']), requires_grad=False)
+            self.geo = GeodesicLoss()
 
     def forward(self, x, a, p):
         a = self.audio_encoder(a)
@@ -70,19 +83,38 @@ class ModeAdaptiveSystem(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x,a, y, p = batch
         pred = self.forward(x, a, p)
-        loss = self.custom_loss(y, pred)
+        loss, mse, geodesic = self.custom_loss(y, pred)
         self.log('train/loss', loss)
+        self.log('train/mse', mse)
+        self.log('train/geodesic', geodesic)
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
         x, a, y, p = batch
         pred = self.forward(x, a, p)
-        loss = self.custom_loss(y, pred)
+        loss, mse, geodesic = self.custom_loss(y, pred)
         self.log('val/loss', loss)
+        self.log('val/mse', mse)
+        self.log('val/geodesic', geodesic)
         return {'loss': loss}
 
+    def renormalize(self, x):
+        return (x * self.std) + self.mean
+
     def custom_loss(self, y, pred):
-        return F.mse_loss(pred, y)
+        y_rot = self.renormalize(y[:, :150])
+        pred_rot = self.renormalize(pred[:, :150])
+
+        y_rot = y_rot.reshape(-1, 6)
+        pred_rot = pred_rot.reshape(-1, 6)
+
+        y_rotmats = rotmat_from_ortho6d(y_rot)
+        pred_rotmats = rotmat_from_ortho6d(pred_rot)
+
+        geodesic = self.geo(y_rotmats, pred_rotmats)
+        mse = F.mse_loss(pred, y)
+        loss = mse + geodesic
+        return loss, mse, geodesic
 
     # def configure_optimizers(self):
     #     self.optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
