@@ -28,8 +28,8 @@ python process_motion.py --mode pipeline --pipeline position --src ./data/trn/bv
 ```
 - Extract raw joint positions using pipeline trained for `trn` and `val` dataset
 ```
-python process_motion.py --mode bvh2npy --pipeline ./pipe_pos --src ./data/trn/bvh --dst ./data/trn/positions
-python process_motion.py --mode bvh2npy --pipeline ./pipe_pos --src ./data/val/bvh --dst ./data/val/positions
+python process_motion.py --mode bvh2npy --pipeline_dir ./pipe_pos --src ./data/trn/bvh --dst ./data/trn/positions
+python process_motion.py --mode bvh2npy --pipeline_dir ./pipe_pos --src ./data/val/bvh --dst ./data/val/positions
 ```
 - Calculate velocities with
 ```
