@@ -49,17 +49,16 @@ if __name__ == '__main__':
         num_workers=args.num_workers,
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
-        vel_included=args.vel_included,
-        ortho6d_norm=args.ortho6d_norm
+        vel_included=args.vel_included
     )
 
     patience_callback = EarlyStopping(
         min_delta=0.0,
         mode='min',
         monitor='val/loss',
-        patience=50
+        patience=70
     )
 
     trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
-                      callbacks=[checkpoint_callback, patience_callback], max_epochs=50)
+                      callbacks=[checkpoint_callback, patience_callback], max_epochs=70)
     trainer.fit(model=system)

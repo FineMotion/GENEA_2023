@@ -121,6 +121,6 @@ if __name__ == '__main__':
 
         logging.info(f"{dataset_sample.name} output shape: {predictions.shape}")
         dst_path = dst_folder / dataset_sample.name.replace('.npz', '.npy')
-        np.save(str(dst_path), predictions[:, :150])
+        np.save(str(dst_path), predictions)
 
 

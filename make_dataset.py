@@ -39,7 +39,14 @@ if __name__ == '__main__':
                  f"Phase: {phase_folders}")
 
     for audio_path in tqdm(audio_folders[0].glob('*.npy')):
-        audio_files = [audio_folder / audio_path.name for audio_folder in audio_folders]
+        audio_files = []
+        for audio_folder in audio_folders:
+            if audio_folder.name.find('interloctr') != -1:
+                audio_file = audio_folder / audio_path.name.replace('main-agent', 'interloctr')
+            else:
+                audio_file = audio_folder / audio_path.name
+            audio_files.append(audio_file)
+        assert len(audio_files) == len(audio_folders)
         audio_data = stack_features(audio_files)
 
         motion_data = None
