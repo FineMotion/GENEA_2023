@@ -28,8 +28,8 @@ python process_motion.py --mode pipeline --pipeline position --src ./data/trn/bv
 ```
 - Extract raw joint positions using pipeline trained for `trn` and `val` dataset
 ```
-python process_motion.py --mode bvh2npy --pipeline_dir ./pipe_pos --src ./data/trn/bvh --dst ./data/trn/positions
-python process_motion.py --mode bvh2npy --pipeline_dir ./pipe_pos --src ./data/val/bvh --dst ./data/val/positions
+python process_motion.py --mode bvh2npy --pipeline position --pipeline_dir ./pipe_pos --src ./data/trn/bvh --dst ./data/trn/positions
+python process_motion.py --mode bvh2npy --pipeline position --pipeline_dir ./pipe_pos --src ./data/val/bvh --dst ./data/val/positions
 ```
 - Calculate velocities with
 ```
@@ -45,8 +45,8 @@ python process_motion.py --mode pipeline --pipeline ortho6d --src ./data/trn/bvh
 ```
 - Extract features: Joint ortho6d angles with root position
 ```
-python process_motion.py --mode bvh2npy --pipeline ./pipe_ortho6d --src ./data/trn/bvh --dst ./data/trn/ortho6d
-python process_motion.py --mode bvh2npy --pipeline ./pipe_ortho6d --src ./data/val/bvh --dst ./data/val/ortho6d
+python process_motion.py --mode bvh2npy --pipeline ortho6d --pipeline_dir ./pipe_ortho6d --src ./data/trn/bvh --dst ./data/trn/ortho6d
+python process_motion.py --mode bvh2npy --pipeline ortho6d --pipeline_dir ./pipe_ortho6d --src ./data/val/bvh --dst ./data/val/ortho6d
 ```
 - Convert data (recombine columns for angles to make them ordered by joint and calculate root velocity:
 ```
