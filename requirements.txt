@@ -6,3 +6,4 @@ torchaudio==2.0.1
 pandas == 2.0.1
 pytorch_lightning==2.0.2
 wandb==0.15.4
+transforms3d==0.4.1

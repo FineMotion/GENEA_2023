@@ -1,5 +1,6 @@
 .ipynb_checkpoints
 data
+vqvae_data
 pipe
 **/__pycache__
 .idea
