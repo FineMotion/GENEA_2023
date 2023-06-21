@@ -54,12 +54,13 @@ class SystemSelector:
         self.system = VQVAESystem(num_embeddings, embedding_dim, input_dim, hidden_dim, max_frames)
 
     def initialize_datamodule(self, trn_folder: str, val_folder: str,
-                              batch_size: int, max_frames: int = MAX_BEATS_LEN):
+                              batch_size: int, max_frames: int = MAX_BEATS_LEN, num_workers: int = 8):
         base_kwargs = {
             'trn_data_path': trn_folder,
             'val_data_path': val_folder,
             'batch_size': batch_size,
-            'max_frames': max_frames
+            'max_frames': max_frames,
+            'num_workers': num_workers
         }
 
         self.datamodule = VQVAEDataModule(**base_kwargs)
