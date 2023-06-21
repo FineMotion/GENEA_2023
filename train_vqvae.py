@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     wandb_logger = WandbLogger(name=Path(args.serialize_dir).name, project='genea2023')
 
-    wandb_logger.experiment.config.update(system_selector.kwargs)
+    #wandb_logger.experiment.config.update(system_selector.kwargs)
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=args.serialize_dir,
