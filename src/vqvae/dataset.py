@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from pathlib import Path
 
 

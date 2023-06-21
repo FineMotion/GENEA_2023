@@ -127,9 +127,6 @@ def save_vqvae_features(src: Path, dst_dir: Path, speaker_motion: bool):
     wav_names = list(src.rglob('*.wav')) if src.is_dir() else [src]
 
     for wav_name in tqdm(wav_names):
-        if os.path.exists(os.path.join(dst_dir, speaker_dir, str(wav_name.name).replace(".wav", ".npy"))):
-            continue
-
         audio_data, tsv_data, bvh_data = load_all_data(wav_name=wav_name, speaker_motion=speaker_motion)
         if len(audio_data) / HOP_LENGTH != bvh_data.shape[0]:
             continue
