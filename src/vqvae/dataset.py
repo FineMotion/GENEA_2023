@@ -20,8 +20,6 @@ class GestureDataset(Dataset):
 
         max_frames_len = 0
         for gesture_file in tqdm(gestures_path.rglob("*.npy")):
-            if "gestures" not in str(gesture_file):
-                continue
             for gesture in np.load(gesture_file, allow_pickle=True):
                 if len(gesture) > max_frames_len:
                     max_frames_len = len(gesture)
