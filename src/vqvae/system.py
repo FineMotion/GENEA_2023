@@ -23,8 +23,8 @@ class VQVAESystem(pl.LightningModule):
         ).double()
         self.learning_rate = learning_rate
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.vqvae(x)
+    def forward(self, x: torch.Tensor, training: bool) -> torch.Tensor:
+        return self.vqvae(x, training=training)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> dict:
         x = batch
