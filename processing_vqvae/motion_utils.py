@@ -1,5 +1,5 @@
-from pymo.parsers import BVHParser
-from pymo.preprocessing import MocapParameterizer, ConstantsRemover, Numpyfier, RootTransformer, JointSelector
+from .pymo_vqvae.parsers import BVHParser
+from .pymo_vqvae.preprocessing import MocapParameterizer, ConstantsRemover, Numpyfier, RootTransformer, JointSelector
 from sklearn.pipeline import Pipeline
 from typing import List
 from pymo.data import MocapData

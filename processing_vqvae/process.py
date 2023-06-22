@@ -6,9 +6,9 @@ from tqdm import tqdm
 import warnings
 from typing import Tuple, List
 
-from motion_utils import *
-from audio_utils import *
-from text_utils import *
+from .motion_utils import *
+from .audio_utils import *
+from .text_utils import *
 
 warnings.filterwarnings('ignore')
 
