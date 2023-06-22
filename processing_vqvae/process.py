@@ -140,7 +140,7 @@ def save_vqvae_features(src: Path, dst_dir: Path, speaker_motion: bool):
 
         gesture_blocks = []
         for i in range(len(split_audio)):
-            beats = get_beats(split_audio[i], len(split_audio[i]))
+            beats = get_beats(split_audio[i], len(split_gestures[i]))
             bvh_blocks = split_bvh_into_blocks(split_gestures[i], beats)
             gesture_blocks += bvh_blocks
 
