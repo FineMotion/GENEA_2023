@@ -48,7 +48,7 @@ class VQVAESystem(pl.LightningModule):
         self.log("val/qloss", qloss)
         return {"loss": loss}
 
-    def on_train_epoch_start(self, *args) -> None:
+    def on_train_epoch_end(self, *args) -> None:
         n_entries = self.vqvae.vq.n_entries
         self.log("train/codebook_used_var", torch.var(n_entries.double()))
 
