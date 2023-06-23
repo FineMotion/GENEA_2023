@@ -123,7 +123,7 @@ def extract_speech_beats(audio_data: np.ndarray, hop_length: int=HOP_LENGTH) -> 
     return beats
 
 
-def correct_beats_len(beats: np.ndarray) -> np.ndarray:
+def correct_beats_len(beats: np.ndarray, to_train: bool) -> np.ndarray:
     """
     https://arxiv.org/pdf/2210.01448.pdf
     Corrects the length of the beats to ensure they fall within the desired range.
@@ -140,18 +140,21 @@ def correct_beats_len(beats: np.ndarray) -> np.ndarray:
     new_beats.append(beats[0])
     for i in range(1, len(beats)):
         if beats[i] - new_beats[-1] >= MIN_BEATS_LEN:
-            while beats[i] - new_beats[-1] > MAX_BEATS_LEN:
-                new_beats.append(new_beats[-1] + MIN_BEATS_LEN)
+            if not to_train:
+                while beats[i] - new_beats[-1] > MAX_BEATS_LEN:
+                    new_beats.append(new_beats[-1] + MIN_BEATS_LEN)
+
             assert beats[i] - new_beats[-1] <= MAX_BEATS_LEN
+            assert beats[i] - new_beats[-1] >= MIN_BEATS_LEN
             new_beats.append(beats[i])
 
-    if new_beats[-1] != beats[-1]:
+    if new_beats[-1] != beats[-1] and not to_train:
         new_beats.append(beats[-1])
 
     return np.array(new_beats)
 
 
-def get_beats(audio: np.ndarray, gest_len: int) -> np.ndarray:
+def get_beats(audio: np.ndarray, gest_len: int, to_train: bool) -> np.ndarray:
     """
     Extracts and corrects beats from the audio data.
 
@@ -163,15 +166,16 @@ def get_beats(audio: np.ndarray, gest_len: int) -> np.ndarray:
         np.ndarray: The beats.
     """
     beats = extract_speech_beats(audio)
-    if len(beats) == 0 or beats[0] != 0:
+    if len(beats) == 0 or beats[0] != 0 and not to_train:
         beats = [0] + list(beats)
 
-    if beats[-1] != gest_len:
+    if beats[-1] != gest_len and not to_train:
         beats = list(beats) + [gest_len]
 
-    beats = correct_beats_len(beats)
+    beats = correct_beats_len(beats, to_train)
 
-    assert beats[0] == 0
-    assert beats[-1] == gest_len
+    if not to_train:
+        assert beats[0] == 0
+        assert beats[-1] == gest_len
 
     return beats

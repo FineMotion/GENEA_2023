@@ -1,5 +1,8 @@
 from pathlib import Path
 from vqvae_utils.utils import *
+import logging
+from argparse import ArgumentParser
+from tqdm import tqdm
 
 
 def save_vqvae_features(src: Path, dst_dir: Path, speaker_motion: bool):
@@ -32,11 +35,9 @@ def save_vqvae_features(src: Path, dst_dir: Path, speaker_motion: bool):
 
         gesture_blocks = []
         for i in range(len(split_audio)):
-            beats = get_beats(split_audio[i], len(split_gestures[i]))
+            beats = get_beats(split_audio[i], len(split_gestures[i]), to_train=True)
             bvh_blocks = split_bvh_into_blocks(split_gestures[i], beats)
             gesture_blocks += bvh_blocks
-
-        assert np.concatenate(split_gestures, axis=0).shape == np.concatenate(gesture_blocks, axis=0).shape
 
         dst_path = os.path.join(dst_dir, speaker_dir, str(wav_name.name).replace(".wav", ".npy"))
         np.save(dst_path, np.array(gesture_blocks, dtype=object))
