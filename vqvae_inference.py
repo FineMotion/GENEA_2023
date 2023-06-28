@@ -1,3 +1,5 @@
+from argparse import ArgumentParser
+
 import torch
 
 from vqvae_utils.utils import *
