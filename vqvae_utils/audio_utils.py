@@ -161,6 +161,7 @@ def get_beats(audio: np.ndarray, gest_len: int, to_train: bool) -> np.ndarray:
     Args:
         audio (np.ndarray): The audio data.
         gest_len (int): The length of gestures data.
+        to_train (bool): TODO
 
     Returns:
         np.ndarray: The beats.

@@ -35,7 +35,7 @@ python train_vqvae.py --trn_folder ./vqvae_data/trn/ --val_folder ./vqvae_data/v
 
 ### Inference VQ-VAE
 ```
-python vqvae_inference.py --checkpoint ./result/vqvae/last.ckpt --src ./data/trn/main-agent --dst ./vqvae_inf_data/trn
+python vqvae_inference.py --train_data --checkpoint ./result/vqvae/last.ckpt --src ./data/trn/main-agent --dst ./vqvae_inf_data/trn
 python vqvae_inference.py --checkpoint ./result/vqvae/last.ckpt --src ./data/val/main-agent --dst ./vqvae_inf_data/val
 ```
 

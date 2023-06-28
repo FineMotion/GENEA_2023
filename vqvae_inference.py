@@ -78,7 +78,7 @@ def pad_gestures(gestures, max_frames=18):
     return torch.stack(vectors_padded)
 
 
-def get_gestures(audio_main_path):
+def get_gestures(audio_main_path, is_train):
     audio_main, audio_interloctr, tsv_main, tsv_interloctr, bvh_interloctr = get_all_data(audio_main_path)
     assert len(audio_main) == len(audio_interloctr)
 
@@ -112,12 +112,12 @@ def get_gestures(audio_main_path):
 
     gesture_blocks = []
     for i in range(len(split_audio_first)):
-        beats_first = get_beats(split_audio_first[i], len(split_gestures_first[i]))
+        beats_first = get_beats(split_audio_first[i], len(split_gestures_first[i]), is_train)
         bvh_blocks_first = split_bvh_into_blocks(split_gestures_first[i], beats_first)
         gesture_blocks += bvh_blocks_first
 
         if len(split_audio_second) > i:
-            beats_second = get_beats(split_audio_second[i], len(split_gestures_second[i]))
+            beats_second = get_beats(split_audio_second[i], len(split_gestures_second[i]), is_train)
             bvh_blocks_second = split_bvh_into_blocks(split_gestures_second[i], beats_second)
             gesture_blocks += bvh_blocks_second
 
@@ -132,7 +132,7 @@ def save_vqvae_inference(src, dst, vqvae, is_train: bool):
     ensure_dir_exists(dst)
     codebook = vqvae.vqvae.vq.embedding.weight
     for audio_main_path in tqdm(Path(src).rglob('*.wav')):
-        inter_gest_out, gest_len = get_gestures(str(audio_main_path))
+        inter_gest_out, gest_len = get_gestures(str(audio_main_path), is_train)
         with torch.no_grad():
             encod_vector = vqvae.vqvae.encoder(inter_gest_out)
             vq_vect = vqvae.vqvae.vq(encod_vector, training=is_train)
