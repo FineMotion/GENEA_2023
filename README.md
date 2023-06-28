@@ -17,6 +17,29 @@ reshapes ortho6d data to change columns order and vice versa
   - `training` - common utils for training: optimizer, scheduler, loss
   - `utils` - utils for data preprocessing and visualization
   
+## VQ-VAE section
+### Data preprocessing
+```
+python process_vqvae.py --src ./data/trn --dst ./vqvae_data/trn 
+python process_vqvae.py --src ./data/trn --dst ./vqvae_data/trn --speaker_motion
+
+python process_vqvae.py --src ./data/val --dst ./vqvae_data/val 
+python process_vqvae.py --src ./data/val --dst ./vqvae_data/val --speaker_motion
+```
+
+### Training VQ-VAE
+```
+python train_vqvae.py --trn_folder ./vqvae_data/trn/ --val_folder ./vqvae_data/val/ --serialize_dir ./result/vqvae \
+    --force --batch_size 1024
+```
+
+### Inference VQ-VAE
+```
+python vqvae_inference.py --checkpoint ./result/vqvae/last.ckpt --src ./data/trn/main-agent --dst ./vqvae_inf_data/trn
+python vqvae_inference.py --checkpoint ./result/vqvae/last.ckpt --src ./data/val/main-agent --dst ./vqvae_inf_data/val
+```
+
+
 ## Data preprocessing for PhaseAutoEncoder
 ### Joint velocities
 Here steps of data preparation to fit original PAE from

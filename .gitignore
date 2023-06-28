@@ -9,3 +9,5 @@ pipe
 .DS_Store
 results
 wandb
+**.ckpt
+Untitled.ipynb
