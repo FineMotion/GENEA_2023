@@ -65,7 +65,7 @@ class ModeAdaptiveSystem(pl.LightningModule):
         w = self.gating(p)
         x = torch.cat([x, a], dim=-1)
         y = self.motion(x, w)
-        return y
+        return y, w
 
     def training_step(self, batch, batch_idx):
         x,a, y, p = batch
