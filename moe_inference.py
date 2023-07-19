@@ -41,7 +41,7 @@ def predict(system, dataset, smooth: bool = False, alpha=0.5, vel_included=False
 
         x, a, p = main_input.unsqueeze(0), audio_input.unsqueeze(0), gating_input.unsqueeze(0)
         with torch.no_grad():
-            pred = system.forward(x,a, p)
+            pred, _ = system.forward(x,a, p)  # predictions, experts weights
 
         next_pose = pred[:, :pose_size]
         next_phase = pred[:, pose_size:]

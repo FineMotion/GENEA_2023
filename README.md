@@ -17,7 +17,7 @@ reshapes ortho6d data to change columns order and vice versa
   - `training` - common utils for training: optimizer, scheduler, loss
   - `utils` - utils for data preprocessing and visualization
   
-## Data preprocessing for PhaseAutoEncoder
+## Data preprocessing for Periodic AutoEncoder
 ### Joint velocities
 Here steps of data preparation to fit original PAE from
 [`AI4Animation`](https://github.com/sebastianstarke/AI4Animation/blob/master/AI4Animation/SIGGRAPH_2022).
