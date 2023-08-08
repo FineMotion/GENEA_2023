@@ -1,8 +1,13 @@
 .ipynb_checkpoints
 data
+vqvae_data
+vqvae_inf_data
+result
 pipe
 **/__pycache__
 .idea
 .DS_Store
 results
 wandb
+**.ckpt
+Untitled.ipynb
