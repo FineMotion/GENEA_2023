@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 
 def stack_features(features_files: List[Path]):
@@ -24,6 +25,8 @@ if __name__ == '__main__':
     arg_parser.add_argument("--audio", type=str, nargs='*', help="List of folders with audio data")
     arg_parser.add_argument("--phase", type=str, nargs='*', help="List of folders with phase data")
     arg_parser.add_argument("--dst", type=str, help="Folder to store resulted dataset")
+    arg_parser.add_argument("--first", action="store_true")
+    arg_parser.add_argument("--metadata_trn_path", type=str, default=None)
     args = arg_parser.parse_args()
 
     dst_folder = Path(args.dst)
@@ -38,7 +41,21 @@ if __name__ == '__main__':
                  f"Audio: {audio_folders}\n"
                  f"Phase: {phase_folders}")
 
+    first_file_names = []
+    if args.first:
+        assert args.metadata_trn_path is not None, "You must specify the path to the thain metadata"
+        metadata_trn = pd.read_csv(args.metadata_trn_path)
+        for i in range(len(metadata_trn)):
+            file_name = metadata_trn["prefix"].iloc[i]
+            if metadata_trn["main-agent_id"].iloc[i] == 1:
+                first_file_names.append(file_name)
+
     for audio_path in tqdm(audio_folders[0].glob('*.npy')):
+        if args.first:
+            cur_name = audio_path.name.replace("*.npy", "")
+            if cur_name not in first_file_names:
+                continue
+
         audio_files = [audio_folder / audio_path.name for audio_folder in audio_folders]
         audio_data = stack_features(audio_files)
 
@@ -58,6 +75,3 @@ if __name__ == '__main__':
                      f"Phase shape: {phase_data.shape if phase_data is not None else None}\n")
 
         np.savez(str(dst_path), Audio=audio_data, Motion=motion_data, Phase=phase_data)
-
-
-

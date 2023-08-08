@@ -67,7 +67,7 @@ if __name__ == '__main__':
     #     batch_size=args.batch_size
     # )
 
-    trainer = Trainer(accelerator=args.accelerator, logger=wandb_logger,
+    trainer = Trainer(accelerator=args.accelerator, devices=-1, logger=wandb_logger,
                       callbacks=[checkpoint_callback, patience_callback])
     trainer.fit(model=system)
 
