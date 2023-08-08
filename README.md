@@ -39,8 +39,7 @@ python vqvae_inference.py --train_data --checkpoint ./result/vqvae/last.ckpt --s
 python vqvae_inference.py --checkpoint ./result/vqvae/last.ckpt --src ./data/val/main-agent --dst ./vqvae_inf_data/val
 ```
 
-
-## Data preprocessing for PhaseAutoEncoder
+## Data preprocessing for Periodic AutoEncoder
 ### Joint velocities
 Here steps of data preparation to fit original PAE from
 [`AI4Animation`](https://github.com/sebastianstarke/AI4Animation/blob/master/AI4Animation/SIGGRAPH_2022).

@@ -65,18 +65,18 @@ class ModeAdaptiveSystem(pl.LightningModule):
         w = self.gating(p)
         x = torch.cat([x, a], dim=-1)
         y = self.motion(x, w)
-        return y
+        return y, w
 
     def training_step(self, batch, batch_idx):
         x,a, y, p = batch
-        pred = self.forward(x, a, p)
+        pred, _ = self.forward(x, a, p)
         loss = self.custom_loss(y, pred)
         self.log('train/loss', loss)
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
         x, a, y, p = batch
-        pred = self.forward(x, a, p)
+        pred, _ = self.forward(x, a, p)
         loss = self.custom_loss(y, pred)
         self.log('val/loss', loss)
         return {'loss': loss}
@@ -84,6 +84,7 @@ class ModeAdaptiveSystem(pl.LightningModule):
     def custom_loss(self, y, pred):
         return F.mse_loss(pred, y)
 
+    # AdamW and CyclicRWR
     # def configure_optimizers(self):
     #     self.optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
     #     self.scheduler = CyclicRWithRestarts(
@@ -97,12 +98,14 @@ class ModeAdaptiveSystem(pl.LightningModule):
     # def on_train_epoch_start(self) -> None:
     #     # call epoch step on scheduler
     #     self.scheduler.epoch_step()
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-4)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
+        # FOR PARALLEL WORKERS
         # return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,
-        #                   collate_fn=self.trn_dataset.collate_fn, num_workers=self.num_workers, persistent_workers=True)
+        #               collate_fn=self.trn_dataset.collate_fn, num_workers=self.num_workers, persistent_workers=True)
         return DataLoader(self.trn_dataset, batch_size=self.batch_size, shuffle=True,
                           collate_fn=self.trn_dataset.collate_fn)
 
