@@ -1,5 +1,11 @@
 # GENEA_2023
-FineMotion's experiments for GENEA 2023 challenge
+FineMotion's experiments for GENEA 2023 challenge. 
+You could also find some additional data in
+[Google Drive](https://drive.google.com/drive/folders/1TpM7J2BnFZ_Yp_zfbMMbMUYS1MPGfSf6?usp=sharing) 
+such checkpoints and some renders in `media` subfolder.
+
+
+
 ## Repo structure
 - `PAE.ipynb` - jupyter notebook with experiments step-by-step
 - `process_motion.py` - script for processing motion data: extracts features from bvh file and vice versa
@@ -84,6 +90,10 @@ python train_pae.py --serialize_dir ./results/pae --trn_folder ./data/trn/veloci
 Some parameters could also be changed, like accelerator or batch size (note: FFT doesn't work on mps). 
 Model options could also be changed: list of options could be found in `src/pae/system:PAESystem.add_system_args`
 
+The resulting Periodic AutoEncoder checkpoint is `pae_joint_vel_best.ckpt`.
+**Note:** if you are willing to use this checkpoint with proposed code you should copy `src/training/sgdr.py` to
+`src/mann/scheduler.py` because this checkpoint was obtained before refactoring.
+
 To train PAE with ortho6d representation you should change some parameters:
 ```
 python train_pae.py --serialize_dir ./results/pae_ortho6d --trn_folder data/trn/ortho6d_fixed \
@@ -92,6 +102,8 @@ python train_pae.py --serialize_dir ./results/pae_ortho6d --trn_folder data/trn/
 Here we have 25 joints (instead of 26) because root is represented by velocity and other joints - by 6D rotation
 
 Some examples of using these models could be found in `PAE.ipynb`. 
+
+
 
 ## Preparing data for main model
 As main model we use some modification of Mixture-of-Experts (or ModeAdaptiveNeuralNetwork) 
