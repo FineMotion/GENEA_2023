@@ -4,6 +4,7 @@ You could also find some additional data in
 [Google Drive](https://drive.google.com/drive/folders/1TpM7J2BnFZ_Yp_zfbMMbMUYS1MPGfSf6?usp=sharing) 
 such checkpoints and some renders in `media` subfolder.
 
+Jupyter Notebook [PAE.ipynb](./PAE.ipynb) contains more visualizations of experiments and suggested to dive into first.
 
 
 ## Repo structure
